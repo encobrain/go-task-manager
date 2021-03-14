@@ -39,7 +39,8 @@ type TaskInfo struct {
 
 type CS_QueueTaskGet_rq struct {
 	RqId
-	UUID string
+	QueueId uint64
+	UUID    string
 }
 
 func (CS_QueueTaskGet_rq) New() interface{} {
@@ -59,6 +60,7 @@ func (SC_QueueTaskGet_rs) New() interface{} {
 
 type CS_QueueTasksSubscribe_rq struct {
 	RqId
+	QueueId uint64
 }
 
 func (CS_QueueTasksSubscribe_rq) New() interface{} {
@@ -87,6 +89,7 @@ func (SC_QueueSubscribeTask_ms) New() interface{} {
 
 type CS_QueueTasksGet_rq struct {
 	RqId
+	QueueId    uint64
 	ParentUUID string
 }
 
