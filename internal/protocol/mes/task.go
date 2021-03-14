@@ -111,3 +111,14 @@ type SC_TaskReject_rs struct {
 func (SC_TaskReject_rs) New() interface{} {
 	return &SC_TaskReject_rs{}
 }
+
+////////////////////////////////////
+
+type SC_TaskCancel_ms struct {
+	StateId uint64
+	Reason  string
+}
+
+func (SC_TaskCancel_ms) New() interface{} {
+	return &SC_TaskCancel_ms{}
+}

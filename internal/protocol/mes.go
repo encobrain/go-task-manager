@@ -62,4 +62,5 @@ var Codes = map[byte]Message{
 	109: &mes.SC_TaskContent_rs{},
 	110: &mes.SC_TaskReject_rs{},
 	111: &mes.SC_TaskRemove_rs{},
+	112: &mes.SC_TaskCancel_ms{},
 }
