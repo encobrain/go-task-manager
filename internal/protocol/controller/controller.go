@@ -74,7 +74,7 @@ func (c *controller) MessageSend(mes protocol.Message) (err error) {
 		return
 	}
 
-	return c.conn.WriteMessage(websocket.BinaryMessage, append([]byte{code}, bytes...))
+	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{code}, bytes...))
 }
 
 func (c *controller) MessageGet() (mess <-chan protocol.Message) {

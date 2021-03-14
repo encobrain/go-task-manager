@@ -36,7 +36,7 @@ func (c *controller) connRead() {
 			break
 		}
 
-		if mt != websocket.BinaryMessage {
+		if mt != websocket.TextMessage {
 			err := &ErrorReadFail{Orig: fmt.Errorf("invalid message format. type=%v", mt)}
 			go c.connIncomingMes(err)
 			break
@@ -93,8 +93,6 @@ func (c *controller) connRead() {
 }
 
 func (c *controller) connStop() {
-	_ = c.conn.Close()
-
 	close(c.incoming.mess)
 	close(c.incoming.reqs)
 
