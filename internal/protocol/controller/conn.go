@@ -95,6 +95,7 @@ func (c *controller) connRead() {
 func (c *controller) connStop() {
 	close(c.incoming.mess)
 	close(c.incoming.reqs)
+	close(c.finished)
 
 	c.res.list.Range(func(key, value interface{}) bool {
 		ch := value.(chan protocol.Response)

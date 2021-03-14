@@ -9,17 +9,20 @@ import (
 )
 
 type Controller interface {
+	// Finished return finished channel.
+	// If it closed - controller finish work with connection
+	Finished() <-chan struct{}
 	// Message sends message to another side
 	MessageSend(mes protocol.Message) error
 	// Message get returns channel with incoming messages
-	// If closed - disconnected
+	// If closed - finished
 	MessageGet() (mess <-chan protocol.Message)
 	// Request sends request and waits response
 	// Chan closed with result
-	// If received nil - disconnected
+	// If received nil - finished
 	RequestSend(req protocol.Request) (res <-chan protocol.Response, err error)
 	// RequestGet returns channel with incoming requests
-	// if closed - disconnected
+	// if closed - finished
 	RequestGet() (reqs <-chan protocol.Request)
 	// ResponseSend sends response on request
 	ResponseSend(req protocol.Request, res protocol.Response) error
@@ -27,9 +30,10 @@ type Controller interface {
 
 func New(codeMes map[byte]protocol.Message, conn *websocket.Conn) Controller {
 	c := &controller{
-		conn:    conn,
-		codeMes: codeMes,
-		mesCode: make(map[protocol.Message]byte, len(codeMes)),
+		conn:     conn,
+		codeMes:  codeMes,
+		finished: make(chan struct{}),
+		mesCode:  make(map[protocol.Message]byte, len(codeMes)),
 	}
 
 	for code, mes := range codeMes {
@@ -53,6 +57,8 @@ type controller struct {
 		mess chan protocol.Message
 		reqs chan protocol.Request
 	}
+
+	finished chan struct{}
 
 	res struct {
 		nextId uint64
@@ -107,4 +113,8 @@ func (c *controller) ResponseSend(req protocol.Request, res protocol.Response) (
 	res.SetResponseId(req.GetRequestId())
 
 	return c.MessageSend(res)
+}
+
+func (c *controller) Finished() <-chan struct{} {
+	return c.finished
 }
