@@ -18,7 +18,7 @@ func (CS_QueueTaskNew_rq) New() interface{} {
 
 type SC_QueueTaskNew_rs struct {
 	RsId
-	UUID    string
+	UUID    string // if empty - queue id invalid
 	StateId uint64
 }
 
@@ -60,7 +60,8 @@ func (SC_QueueTaskGet_rs) New() interface{} {
 
 type CS_QueueTasksSubscribe_rq struct {
 	RqId
-	QueueId uint64
+	QueueId    uint64
+	ParentUUID string
 }
 
 func (CS_QueueTasksSubscribe_rq) New() interface{} {
