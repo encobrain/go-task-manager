@@ -6,12 +6,12 @@ type Task interface {
 	ParentUUID() string
 	// Status gets status of task.
 	Status() string
-	// StatusSubscribe subscribes on actual status from queue.
-	// If task state changed - task will be canceled.
+	// StatusSubscribe subscribes on actual task status from queue.
+	// If task state changed - previous task will be canceled.
 	// No need listen to task.Done() and status simultaniously.
 	// Empty status - task not exists.
 	// Closed chan - client stopped
-	StatusSubscribe() (status <-chan string)
+	StatusSubscribe() (status <-chan Task)
 	// Content gets tasks content from task-manager.
 	// nil - task canceled.
 	// Chan closed with result.
@@ -23,7 +23,7 @@ type Task interface {
 	// Remove should execute on side that created this task.
 	// If <-done == false - task canceled
 	Remove() (done <-chan bool)
-	// Done returns done channel.
+	// Canceled returns canceled channel.
 	// If it closed - task canceled. See Err().
 	Canceled() (canceled <-chan struct{})
 	// Err return reason of task cancel.
