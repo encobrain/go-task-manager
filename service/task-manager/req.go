@@ -30,5 +30,7 @@ func (s *tmService) reqProcess(ctx context.Context) {
 		s.queueTaskGet(ctx)
 	case *mes.CS_QueueTasksSubscribe_rq:
 		s.queueTaskSubscribe(ctx)
+	case *mes.CS_QueueTasksGet_rq:
+		s.queueTasksGet(ctx)
 	}
 }

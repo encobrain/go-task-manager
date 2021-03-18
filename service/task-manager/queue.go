@@ -138,3 +138,51 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 		log.Printf("Send response fail. %s\n", err)
 	}
 }
+
+// ctx should contain vars:
+//   storage.queue.manager lib/storage/queue.Manager
+//   task.state *taskState
+//
+//   req *protocol/mes/CS_QueueTasksGet_rq
+//   protocol.ctl protocol/controller.Controller
+func (s *tmService) queueTasksGet(ctx context.Context) {
+	req := ctx.Value("req").(*mes.CS_QueueTasksGet_rq)
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+
+	res := &mes.SC_QueueTasksGet_rs{}
+
+	queue := queueGetById(ctx, req.QueueId)
+
+	if queue != nil {
+		tasks := queue.TasksGet()
+
+		if req.ParentUUID != "" {
+			var byPID []storage.Task
+
+			for _, t := range tasks {
+				if t.ParentUUID() == req.ParentUUID {
+					byPID = append(byPID, t)
+				}
+			}
+
+			tasks = byPID
+		}
+
+		for _, t := range tasks {
+			stateId := s.taskStateGetOrNewId(ctx, t)
+
+			res.Tasks = append(res.Tasks, mes.TaskInfo{
+				StateId:    stateId,
+				UUID:       t.UUID(),
+				ParentUUID: t.ParentUUID(),
+				Status:     t.Status(),
+			})
+		}
+	}
+
+	err := protCtl.ResponseSend(req, res)
+
+	if err != nil {
+		log.Printf("Send response fail. %s\n", err)
+	}
+}
