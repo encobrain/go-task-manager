@@ -104,10 +104,10 @@ func (ts *taskState) remove(task storage.Task) {
 	delete(ts.ids, chId)
 	delete(ts.tasks, id)
 
-	ictx, ok := ts.watchers[chId]
+	wCtx := ts.watchers[chId]
 
-	if ok {
-		ictx.(context.Context).Cancel(fmt.Errorf("removed"))
+	if wCtx != nil {
+		wCtx.Cancel(fmt.Errorf("removed"))
 	}
 
 	delete(ts.watchers, chId)
