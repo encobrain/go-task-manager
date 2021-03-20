@@ -12,7 +12,7 @@ import (
 func (s *tmService) workerPanicHandler(ctx context.Context, panicErr interface{}) {
 	log.Printf("Service panic. %s\n", panicErr)
 
-	ctx.Cancel(fmt.Errorf("service panic. %s", panicErr))
+	ctx.Cancel(fmt.Errorf("panic"))
 
 	s.workerStop()
 }
@@ -21,6 +21,9 @@ func (s *tmService) workerStart(ctx context.Context) {
 	ctx.PanicHandlerSet(s.workerPanicHandler)
 
 	s.conn.serve = make(chan *websocket.Conn)
+	defer close(s.conn.serve)
+
+	ctx.Child("conn.worker", s.connWorker)
 
 	s.task.router = router.New(ctx)
 
