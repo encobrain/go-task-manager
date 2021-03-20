@@ -18,6 +18,11 @@ func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
 		}
 	}()
 
+	if conn == nil {
+		err = fmt.Errorf("conn is nil")
+		return
+	}
+
 	s.conn.serve <- conn
 
 	return
@@ -26,20 +31,17 @@ func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
 // ctx should contain vars:
 //   storage.queue.manager lib/storage/queue.Manager
 func (s *tmService) connWorker(ctx context.Context) {
-	defer close(s.conn.serve)
-
-loop:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Printf("Conn worker stopped. %s\n", ctx.Err())
-			break loop
-		case conn := <-s.conn.serve:
-			if conn == nil {
-				continue
+			return
+		case conn, ok := <-s.conn.serve:
+			if !ok {
+				return
 			}
 
-			ctx := ctx.Child("conn.serve", s.connServe)
+			ctx := ctx.Child("serve", s.connServe)
 			ctx.ValueSet("conn", conn)
 		}
 	}
