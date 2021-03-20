@@ -55,6 +55,8 @@ func (s *tmService) queueTaskNew(ctx context.Context) {
 	if queue != nil {
 		task := queue.TaskNew(req.ParentUUID, req.Status, req.Content)
 
+		s.task.router.Route(queue, task)
+
 		stateId := taskState.getOrNewId(task)
 
 		res.UUID = task.UUID()
