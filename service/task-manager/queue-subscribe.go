@@ -81,9 +81,8 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 }
 
 // ctx should contain vars:
-//   task.state *taskState
-//
 //   task lib/storage.Task
+//   task.state *taskState
 //   protocol.ctl protocol/controller.Controller
 //   subscribe.id uint64
 //   subscribe.queue lib/storage.Queue
@@ -95,6 +94,7 @@ func (s *tmService) queueSubscribeSend(ctx context.Context) {
 	subId := ctx.Value("subscribe.id").(uint64)
 	cancel := qss.getCancel(subId)
 	queue := ctx.Value("subscribe.queue").(storage.Queue)
+	taskState := ctx.Value("task.state").(*taskState)
 
 	defer s.task.router.Route(queue, task)
 
@@ -102,9 +102,9 @@ func (s *tmService) queueSubscribeSend(ctx context.Context) {
 		return
 	}
 
-	stateId := s.taskStateGetOrNewId(ctx, task)
+	stateId := taskState.getOrNewId(task)
 
-	defer s.taskStateRemove(ctx, task)
+	defer taskState.remove(task)
 
 	err := protCtl.MessageSend(&mes.SC_QueueSubscribeTask_ms{
 		SubscribeId: subId,

@@ -64,7 +64,7 @@ func (s *tmService) connServe(ctx context.Context) {
 	protCtl := controller.New(protocol.Codes, conn)
 
 	ctx.ValueSet("protocol.ctl", protCtl)
-	ctx.ValueSet("task.state", newTaskState())
+	ctx.ValueSet("task.state", newTaskState(ctx))
 	ctx.ValueSet("queue.subscribe.state", newQueueSubscribeState())
 	ctx.ValueSet("task.status.subscribe.state", newTaskStatusSubscribeState())
 

@@ -43,9 +43,11 @@ func (s *tmService) queueGet(ctx context.Context) {
 //   storage.queue.manager lib/storage/queue.Manager
 //
 //   req *protocol/mes/mes.CS_QueueTaskNew_rq
+//   task.state *taskState
 func (s *tmService) queueTaskNew(ctx context.Context) {
 	req := ctx.Value("req").(*mes.CS_QueueTaskNew_rq)
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
 
 	res := &mes.SC_QueueTaskNew_rs{}
 	queue := queueGetById(ctx, req.QueueId)
@@ -53,7 +55,7 @@ func (s *tmService) queueTaskNew(ctx context.Context) {
 	if queue != nil {
 		task := queue.TaskNew(req.ParentUUID, req.Status, req.Content)
 
-		stateId := s.taskStateGetOrNewId(ctx, task)
+		stateId := taskState.getOrNewId(task)
 
 		res.UUID = task.UUID()
 		res.StateId = stateId
@@ -67,14 +69,15 @@ func (s *tmService) queueTaskNew(ctx context.Context) {
 }
 
 // ctx should contain vars:
-//   task.state *taskState
 //   storage.queue.manager lib/storage/queue.Manager
 //
 //   protocol.ctl protocol/controller.Controller
 //   req *protocol/mes/CS_QueueTaskGet_rq
+//   task.state *taskState
 func (s *tmService) queueTaskGet(ctx context.Context) {
 	req := ctx.Value("req").(*mes.CS_QueueTaskGet_rq)
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
 
 	res := &mes.SC_QueueTaskGet_rs{}
 
@@ -84,7 +87,7 @@ func (s *tmService) queueTaskGet(ctx context.Context) {
 		task := queue.TaskGet(req.UUID)
 
 		if task != nil {
-			stateId := s.taskStateGetOrNewId(ctx, task)
+			stateId := taskState.getOrNewId(task)
 
 			res.Info = &mes.TaskInfo{
 				StateId:    stateId,
@@ -139,13 +142,14 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 
 // ctx should contain vars:
 //   storage.queue.manager lib/storage/queue.Manager
-//   task.state *taskState
 //
 //   req *protocol/mes/CS_QueueTasksGet_rq
 //   protocol.ctl protocol/controller.Controller
+//   task.state *taskState
 func (s *tmService) queueTasksGet(ctx context.Context) {
 	req := ctx.Value("req").(*mes.CS_QueueTasksGet_rq)
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
 
 	res := &mes.SC_QueueTasksGet_rs{}
 
@@ -167,7 +171,7 @@ func (s *tmService) queueTasksGet(ctx context.Context) {
 		}
 
 		for _, t := range tasks {
-			stateId := s.taskStateGetOrNewId(ctx, t)
+			stateId := taskState.getOrNewId(t)
 
 			res.Tasks = append(res.Tasks, mes.TaskInfo{
 				StateId:    stateId,

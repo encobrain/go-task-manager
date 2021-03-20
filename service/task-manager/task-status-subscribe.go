@@ -52,15 +52,15 @@ func (s *taskStatusSubscribeState) getCancel(id uint64) <-chan struct{} {
 }
 
 // ctx should contain vars:
-//   task.state *taskState
-//
 //   task.uuid string
+//   task.state *taskState
 //   queue lib/storage.Queue
 //   subscribe.id uint64
 //   protocol.ctl protocol/controller.Controller
 //   task.status.subscribe.state *taskStatusSubscribeState
 func (s *tmService) taskStatusSubscribeProcess(ctx context.Context) {
 	taskUUID := ctx.Value("task.uuid").(string)
+	taskState := ctx.Value("task.state").(*taskState)
 	queue := ctx.Value("queue").(storage.Queue)
 	subId := ctx.Value("subscribe.id").(uint64)
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
@@ -77,7 +77,7 @@ func (s *tmService) taskStatusSubscribeProcess(ctx context.Context) {
 		}
 
 		if task != nil {
-			stateId := s.taskStateGetOrNewId(ctx, task)
+			stateId := taskState.getOrNewId(task)
 
 			statusMes.Info = &mes.TaskInfo{
 				StateId:    stateId,

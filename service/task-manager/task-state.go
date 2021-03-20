@@ -10,82 +10,72 @@ import (
 	"sync"
 )
 
-func newTaskState() *taskState {
+// ctx should contain vars:
+//   protocol.ctl protocol/controller.Controller
+func newTaskState(ctx context.Context) *taskState {
 	return &taskState{
-		id:      map[<-chan struct{}]uint64{},
-		watcher: map[<-chan struct{}]context.Context{},
-		task:    map[uint64]storage.Task{},
+		ctx:      ctx,
+		ids:      map[<-chan struct{}]uint64{},
+		watchers: map[<-chan struct{}]context.Context{},
+		tasks:    map[uint64]storage.Task{},
 	}
 }
 
 type taskState struct {
-	mu      sync.Mutex
-	nextId  uint64
-	id      map[<-chan struct{}]uint64
-	watcher map[<-chan struct{}]context.Context
-	task    map[uint64]storage.Task
+	ctx     context.Context
+	protCtl controller.Controller
+
+	mu       sync.Mutex
+	nextId   uint64
+	ids      map[<-chan struct{}]uint64
+	watchers map[<-chan struct{}]context.Context
+	tasks    map[uint64]storage.Task
 }
 
-func (ts *taskState) getTask(stateId uint64) storage.Task {
+func (ts *taskState) getOrNewId(task storage.Task) (id uint64) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	return ts.task[stateId]
-}
-
-// ctx should contain vars:
-//   protocol.ctl protocol/controller.Controller
-//
-//   task.state *taskState
-func (s *tmService) taskStateGetOrNewId(ctx context.Context, task storage.Task) (id uint64) {
-	taskState := ctx.Value("task.state").(*taskState)
-	taskState.mu.Lock()
-	defer taskState.mu.Unlock()
-
 	chId := task.Canceled()
-	id, ok := taskState.id[chId]
+	id, ok := ts.ids[chId]
 
 	if ok {
 		return id
 	}
 
-	id = taskState.nextId
-	taskState.nextId++
+	id = ts.nextId
+	ts.nextId++
 
-	taskState.id[chId] = id
-	taskState.task[id] = task
+	ts.ids[chId] = id
+	ts.tasks[id] = task
 
-	wCtx := ctx.Child("task.state.watcher", s.taskStateWatcher)
+	wCtx := ts.ctx.Child("task.state.watcher", ts.watcher)
 	wCtx.ValueSet("task", task)
+
+	ts.watchers[chId] = wCtx
 
 	return
 }
 
 // ctx should contain vars:
-//   task.state *taskState
 //   protocol.ctl protocol/controller.Controller
 //   task lib/storage.Task
-func (s *tmService) taskStateWatcher(ctx context.Context) {
+func (ts *taskState) watcher(ctx context.Context) {
 	task := ctx.Value("task").(storage.Task)
 	chId := task.Canceled()
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 
-	taskState := ctx.Value("task.state").(*taskState)
-	taskState.mu.Lock()
+	ts.mu.Lock()
 
-	id, ok := taskState.id[chId]
+	id, ok := ts.ids[chId]
+
+	ts.mu.Unlock()
 
 	if !ok {
-		taskState.mu.Unlock()
 		return
 	}
 
-	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
-
-	taskState.watcher[chId] = ctx
-
-	taskState.mu.Unlock()
-
-	defer s.taskStateRemove(ctx, task)
+	defer ts.remove(task)
 
 	select {
 	case <-ctx.Done():
@@ -104,24 +94,28 @@ func (s *tmService) taskStateWatcher(ctx context.Context) {
 	}
 }
 
-// ctx should contain vars:
-//   task.state *taskState
-func (s *tmService) taskStateRemove(ctx context.Context, task storage.Task) {
-	taskState := ctx.Value("task.state").(*taskState)
+func (ts *taskState) remove(task storage.Task) {
 	chId := task.Canceled()
-	taskState.mu.Lock()
-	defer taskState.mu.Unlock()
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
 
-	id := taskState.id[chId]
+	id := ts.ids[chId]
 
-	delete(taskState.id, chId)
-	delete(taskState.task, id)
+	delete(ts.ids, chId)
+	delete(ts.tasks, id)
 
-	ictx, ok := taskState.watcher[chId]
+	ictx, ok := ts.watchers[chId]
 
 	if ok {
 		ictx.(context.Context).Cancel(fmt.Errorf("removed"))
 	}
 
-	delete(taskState.watcher, chId)
+	delete(ts.watchers, chId)
+}
+
+func (ts *taskState) getTask(stateId uint64) storage.Task {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	return ts.tasks[stateId]
 }
