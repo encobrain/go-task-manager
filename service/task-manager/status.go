@@ -33,10 +33,6 @@ func (s *tmService) statusSet(new service.Status, prev ...service.Status) bool {
 	s.status.lock.Lock()
 	defer s.status.lock.Unlock()
 
-	if s.status.v == new {
-		return true
-	}
-
 	if len(prev) != 0 {
 		ok := false
 		for _, p := range prev {
