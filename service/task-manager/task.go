@@ -47,7 +47,7 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 //   req *protocol/mes/CS_TaskContent_rq
 //   protocol.ctl protocol/controller.Controller
 //   task.state *taskState
-func (s *tmService) taskConent(ctx context.Context) {
+func (s *tmService) taskContent(ctx context.Context) {
 	req := ctx.Value("req").(*mes.CS_TaskContent_rq)
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 	taskState := ctx.Value("task.state").(*taskState)
