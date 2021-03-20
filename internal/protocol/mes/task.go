@@ -6,7 +6,8 @@ import (
 
 type CS_TaskStatusSubscribe_rq struct {
 	RqId
-	UUID string
+	QueueId uint64
+	UUID    string
 }
 
 func (CS_TaskStatusSubscribe_rq) New() interface{} {
@@ -15,7 +16,7 @@ func (CS_TaskStatusSubscribe_rq) New() interface{} {
 
 type SC_TaskStatusSubscribe_rs struct {
 	RsId
-	SubscribeId uint64
+	SubscribeId *uint64 // if nil - queue or task not exists
 }
 
 func (SC_TaskStatusSubscribe_rs) New() interface{} {

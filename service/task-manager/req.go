@@ -13,6 +13,7 @@ import (
 //   protocol.ctl protocol/controller.Controller
 //   storage.queue.manager lib/storage/QueueManager
 //   queue.subscribe.state *queueSubscribeState
+//   task.status.subscribe.state *taskStatusSubscribeState
 //
 //   req protocol.Request
 func (s *tmService) reqProcess(ctx context.Context) {
@@ -32,5 +33,8 @@ func (s *tmService) reqProcess(ctx context.Context) {
 		s.queueTaskSubscribe(ctx)
 	case *mes.CS_QueueTasksGet_rq:
 		s.queueTasksGet(ctx)
+
+	case *mes.CS_TaskStatusSubscribe_rq:
+		s.taskStatusSubscribe(ctx)
 	}
 }

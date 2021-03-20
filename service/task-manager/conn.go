@@ -66,6 +66,7 @@ func (s *tmService) connServe(ctx context.Context) {
 	ctx.ValueSet("protocol.ctl", protCtl)
 	ctx.ValueSet("task.state", newTaskState())
 	ctx.ValueSet("queue.subscribe.state", newQueueSubscribeState())
+	ctx.ValueSet("task.status.subscribe.state", newTaskStatusSubscribeState())
 
 	for {
 		select {
