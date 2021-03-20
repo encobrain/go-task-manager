@@ -166,3 +166,31 @@ func (s *tmService) taskRemove(ctx context.Context) {
 
 	res.Ok = queue.TaskRemove(task.UUID())
 }
+
+// ctx should contain vars:
+//   req *protocol/mes.CS_TaskReject_rq
+//   protocol.ctl protocol/controller.Controller
+//   task.state *taskState
+//   queue.subscribe.state *queueSubscribeState
+func (s *tmService) taskReject(ctx context.Context) {
+	req := ctx.Value("req").(*mes.CS_TaskReject_rq)
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
+	qss := ctx.Value("queue.subscribe.state").(*queueSubscribeState)
+
+	res := &mes.SC_TaskReject_rs{}
+
+	defer func() {
+		err := protCtl.ResponseSend(req, res)
+
+		if err != nil {
+			log.Printf("Send response fail. %s\n", err)
+		}
+	}()
+
+	task := taskState.getTask(req.StateId)
+
+	if task != nil {
+		qss.rejectSent(task)
+	}
+}

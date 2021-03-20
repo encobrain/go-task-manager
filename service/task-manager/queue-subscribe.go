@@ -1,6 +1,7 @@
 package task_manager
 
 import (
+	"fmt"
 	"github.com/encobrain/go-context.v2"
 	"github.com/encobrain/go-task-manager/internal/protocol/controller"
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
@@ -12,6 +13,7 @@ import (
 func newQueueSubscribeState() *queueSubscribeState {
 	return &queueSubscribeState{
 		cancels: map[uint64]chan struct{}{},
+		sent:    map[storage.Task]context.Context{},
 	}
 }
 
@@ -19,6 +21,7 @@ type queueSubscribeState struct {
 	mu      sync.Mutex
 	nextId  uint64
 	cancels map[uint64]chan struct{}
+	sent    map[storage.Task]context.Context
 }
 
 func (s *queueSubscribeState) new() (id uint64) {
@@ -49,6 +52,25 @@ func (s *queueSubscribeState) getCancel(id uint64) <-chan struct{} {
 	defer s.mu.Unlock()
 
 	return s.cancels[id]
+}
+
+func (s *queueSubscribeState) addSent(task storage.Task, ctx context.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.sent[task] = ctx
+}
+
+func (s *queueSubscribeState) rejectSent(task storage.Task) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ctx := s.sent[task]
+
+	if ctx != nil {
+		delete(s.sent, task)
+		ctx.Cancel(fmt.Errorf("rejected"))
+	}
 }
 
 // ctx should contain vars:
@@ -104,7 +126,9 @@ func (s *tmService) queueSubscribeSend(ctx context.Context) {
 
 	stateId := taskState.getOrNewId(task)
 
-	defer taskState.remove(task)
+	qss.addSent(task, ctx)
+
+	defer qss.rejectSent(task)
 
 	err := protCtl.MessageSend(&mes.SC_QueueSubscribeTask_ms{
 		SubscribeId: subId,

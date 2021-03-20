@@ -42,5 +42,7 @@ func (s *tmService) reqProcess(ctx context.Context) {
 		s.taskStatusSet(ctx)
 	case *mes.CS_TaskRemove_rq:
 		s.taskRemove(ctx)
+	case *mes.CS_TaskReject_rq:
+		s.taskReject(ctx)
 	}
 }
