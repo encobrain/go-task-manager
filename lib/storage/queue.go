@@ -8,4 +8,8 @@ type Queue interface {
 	TaskGet(uuid string) Task
 
 	TasksGet() []Task
+
+	// TaskStatusSet sets new status with content and return new task state
+	// If return nil - task with uuid not exists
+	TaskStatusSet(uuid string, status string, content []byte) Task
 }

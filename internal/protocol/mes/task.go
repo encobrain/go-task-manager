@@ -56,6 +56,7 @@ func (SC_TaskContent_rs) New() interface{} {
 
 type CS_TaskStatusSet_rq struct {
 	RqId
+	QueueId uint64
 	StateId uint64
 	Status  string
 	Content []byte
@@ -67,7 +68,7 @@ func (CS_TaskStatusSet_rq) New() interface{} {
 
 type SC_TaskStatusSet_rs struct {
 	RsId
-	Ok bool // if false - task canceled
+	StateId *uint64 // if nil - task canceled/not exists or queue invalid
 }
 
 func (SC_TaskStatusSet_rs) New() interface{} {
