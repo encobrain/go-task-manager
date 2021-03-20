@@ -70,7 +70,7 @@ func (CS_QueueTasksSubscribe_rq) New() interface{} {
 
 type SC_QueueTasksSubscribe_rs struct {
 	RsId
-	SubscribeId uint64
+	SubscribeId *uint64 // if nil - queue not exists
 }
 
 func (SC_QueueTasksSubscribe_rs) New() interface{} {

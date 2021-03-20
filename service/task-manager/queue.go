@@ -115,21 +115,19 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 
 	queue := queueGetById(ctx, req.QueueId)
-	id := qss.new()
 
-	res := &mes.SC_QueueTasksSubscribe_rs{
-		SubscribeId: id,
-	}
+	res := &mes.SC_QueueTasksSubscribe_rs{}
 
 	if queue != nil {
+		id := qss.new()
+		res.SubscribeId = &id
+
 		receive := s.task.router.Subscribe(queue, req.ParentUUID)
 
 		ctx := ctx.Child("queue.subscribe.process", s.queueSubscribeProcess)
 		ctx.ValueSet("receive", receive)
 		ctx.ValueSet("subscribe.id", id)
 		ctx.ValueSet("subscribe.queue", queue)
-	} else {
-		qss.cancel(id)
 	}
 
 	err := protCtl.ResponseSend(req, res)
