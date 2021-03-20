@@ -36,5 +36,7 @@ func (s *tmService) reqProcess(ctx context.Context) {
 
 	case *mes.CS_TaskStatusSubscribe_rq:
 		s.taskStatusSubscribe(ctx)
+	case *mes.CS_TaskContent_rq:
+		s.taskContent(ctx)
 	}
 }

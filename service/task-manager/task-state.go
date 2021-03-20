@@ -14,6 +14,7 @@ func newTaskState() *taskState {
 	return &taskState{
 		id:      map[<-chan struct{}]uint64{},
 		watcher: map[<-chan struct{}]context.Context{},
+		task:    map[uint64]storage.Task{},
 	}
 }
 
@@ -22,6 +23,14 @@ type taskState struct {
 	nextId  uint64
 	id      map[<-chan struct{}]uint64
 	watcher map[<-chan struct{}]context.Context
+	task    map[uint64]storage.Task
+}
+
+func (ts *taskState) getTask(stateId uint64) storage.Task {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	return ts.task[stateId]
 }
 
 // ctx should contain vars:
@@ -44,6 +53,7 @@ func (s *tmService) taskStateGetOrNewId(ctx context.Context, task storage.Task) 
 	taskState.nextId++
 
 	taskState.id[chId] = id
+	taskState.task[id] = task
 
 	wCtx := ctx.Child("task.state.watcher", s.taskStateWatcher)
 	wCtx.ValueSet("task", task)
@@ -102,7 +112,10 @@ func (s *tmService) taskStateRemove(ctx context.Context, task storage.Task) {
 	taskState.mu.Lock()
 	defer taskState.mu.Unlock()
 
+	id := taskState.id[chId]
+
 	delete(taskState.id, chId)
+	delete(taskState.task, id)
 
 	ictx, ok := taskState.watcher[chId]
 

@@ -42,3 +42,33 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 		log.Printf("Send response fail. %s\n", err)
 	}
 }
+
+// ctx should contain vars:
+//   req *protocol/mes/CS_TaskContent_rq
+//   protocol.ctl protocol/controller.Controller
+//   task.state *taskState
+func (s *tmService) taskConent(ctx context.Context) {
+	req := ctx.Value("req").(*mes.CS_TaskContent_rq)
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
+
+	task := taskState.getTask(req.StateId)
+
+	res := &mes.SC_TaskContent_rs{}
+
+	if task != nil {
+		select {
+		case <-task.Canceled():
+		default:
+			content := task.Content()
+			content = append([]byte{}, content...)
+			res.Content = &content
+		}
+	}
+
+	err := protCtl.ResponseSend(req, res)
+
+	if err != nil {
+		log.Printf("Send response fail. %s\n", err)
+	}
+}
