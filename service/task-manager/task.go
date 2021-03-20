@@ -124,3 +124,45 @@ func (s *tmService) taskStatusSet(ctx context.Context) {
 	stateId := taskState.getOrNewId(task)
 	res.StateId = &stateId
 }
+
+// ctx should contain vars:
+//   req *protocol/mes.CS_TaskRemove_rq
+//   protocol.ctl protocol/controller.Controller
+//   task.state *taskState
+//   storage.queue.manager lib/storage/queue.Manager
+func (s *tmService) taskRemove(ctx context.Context) {
+	req := ctx.Value("req").(*mes.CS_TaskRemove_rq)
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+	taskState := ctx.Value("task.state").(*taskState)
+	queueManager := ctx.Value("storage.queue.manager").(queue.Manager)
+
+	res := &mes.SC_TaskRemove_rs{}
+
+	defer func() {
+		err := protCtl.ResponseSend(req, res)
+
+		if err != nil {
+			log.Printf("Send response fail. %s\n", err)
+		}
+	}()
+
+	task := taskState.getTask(req.StateId)
+
+	if task == nil {
+		return
+	}
+
+	queue := queueManager.Get(req.QueueId)
+
+	if queue == nil {
+		return
+	}
+
+	select {
+	case <-task.Canceled():
+		return
+	default:
+	}
+
+	res.Ok = queue.TaskRemove(task.UUID())
+}

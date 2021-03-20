@@ -79,6 +79,7 @@ func (SC_TaskStatusSet_rs) New() interface{} {
 
 type CS_TaskRemove_rq struct {
 	RqId
+	QueueId uint64
 	StateId uint64
 }
 
@@ -88,7 +89,7 @@ func (CS_TaskRemove_rq) New() interface{} {
 
 type SC_TaskRemove_rs struct {
 	RsId
-	Ok bool // if false - task canceled
+	Ok bool // if false - task canceled/not exists or queue invalid
 }
 
 func (SC_TaskRemove_rs) New() interface{} {
