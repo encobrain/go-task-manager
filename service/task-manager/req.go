@@ -11,7 +11,7 @@ import (
 // ctx should contain vars:
 //   task.state *taskState
 //   protocol.ctl protocol/controller.Controller
-//   storage.queue.manager lib/storage/QueueManager
+//   storage.queue.manager lib/storage/queue.Manager
 //   queue.subscribe.state *queueSubscribeState
 //   task.status.subscribe.state *taskStatusSubscribeState
 //

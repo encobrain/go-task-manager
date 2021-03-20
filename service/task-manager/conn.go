@@ -24,7 +24,7 @@ func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
 }
 
 // ctx should contain vars:
-//   storage.queue.manager lib/storage/QueueManager
+//   storage.queue.manager lib/storage/queue.Manager
 func (s *tmService) connWorker(ctx context.Context) {
 	defer close(s.conn.serve)
 
@@ -46,7 +46,7 @@ loop:
 }
 
 // ctx should contain vars:
-//   storage.queue.manager lib/storage/QueueManager
+//   storage.queue.manager lib/storage/queue.Manager
 //
 //   conn *github.com/gorilla/websocket.Conn
 func (s *tmService) connServe(ctx context.Context) {
