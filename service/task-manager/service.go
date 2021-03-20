@@ -14,6 +14,9 @@ import (
 type Service interface {
 	service.Service
 
+	// ctx should contain vars:
+	//   storage.queue.manager lib/storage/queue.Manager
+	Start()
 	ConnServe(conn *websocket.Conn) error
 }
 
