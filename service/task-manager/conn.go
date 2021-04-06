@@ -3,8 +3,8 @@ package task_manager
 import (
 	"fmt"
 	"github.com/encobrain/go-context.v2"
-	"github.com/encobrain/go-task-manager/internal/protocol"
 	"github.com/encobrain/go-task-manager/internal/protocol/controller"
+	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"github.com/gorilla/websocket"
 	"log"
 )
@@ -63,7 +63,7 @@ func (s *tmService) connServe(ctx context.Context) {
 		ctx.Cancel(fmt.Errorf("panic"))
 	})
 
-	protCtl := controller.New(protocol.Codes, conn)
+	protCtl := controller.New(mes.Codes, conn)
 
 	ctx.ValueSet("protocol.ctl", protCtl)
 	ctx.ValueSet("task.state", newTaskState(ctx))
