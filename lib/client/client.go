@@ -93,9 +93,7 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 
 				rs := resm.(*mes.SC_ClientGetQueue_rs)
 
-				q := newQueue(c.ctx.glob, rs.QueueId)
-				q.protocol.ctl = c.protocol.ctl
-				q.task = &c.task
+				q := c.queueNew(rs.QueueId)
 
 				queue, _ := c.queue.LoadOrStore(name, q)
 
@@ -106,6 +104,16 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 	})
 
 	return ch
+}
+
+func (c *client) queueNew(id uint64) *queue {
+	q := newQueue()
+	q.id = id
+	q.task = &c.task
+	q.protocol.ctl = c.protocol.ctl
+	q.ctx = c.ctx.worker
+
+	return q
 }
 
 func (c *client) Start() {
