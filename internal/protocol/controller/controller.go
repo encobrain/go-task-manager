@@ -102,7 +102,7 @@ func (c *controller) RequestSend(req protocol.Request) (res <-chan protocol.Resp
 		close(resCh)
 	}
 
-	return
+	return resCh, nil
 }
 
 func (c *controller) RequestGet() (reqs <-chan protocol.Request) {
