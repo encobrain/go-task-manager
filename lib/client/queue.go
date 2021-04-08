@@ -158,9 +158,9 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 	ch := make(chan Task)
 
 	q.ctx.Child("queue.tasks.subscribe", func(ctx context.Context) {
-		for {
-			log.Printf("TMClient: Queue[%d]: tasks subscribing parentUUID=%s ...\n", q.id, parentUUID)
+		log.Printf("TMClient: Queue[%d]: tasks subscribing parentUUID=%s ...\n", q.id, parentUUID)
 
+		for {
 			protCtl := <-q.protocol.ctl
 
 			if protCtl == nil {
@@ -204,6 +204,8 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 				return
 			case <-protCtl.Finished():
 			}
+
+			log.Printf("TMClient: Queue[%d]: tasks resubscribing parentUUID=%s ...\n", q.id, parentUUID)
 		}
 	})
 
