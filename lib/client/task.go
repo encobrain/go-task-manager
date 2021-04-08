@@ -18,8 +18,8 @@ type Task interface {
 	// StatusSubscribe subscribes on actual task status from queue.
 	// If task state changed - previous task will be canceled.
 	// No need listen to task.Canceled() and status simultaniously.
-	// Empty status - task not exists.
-	// Closed chan - client stopped
+	// nil - task not exists.
+	// Closed channel - client stopped
 	StatusSubscribe() (status <-chan Task)
 	// Content gets tasks content from task-manager.
 	// nil - task canceled.
@@ -55,6 +55,10 @@ type task struct {
 
 	protocol struct {
 		ctl chan controller.Controller
+	}
+
+	statusSubscribe struct {
+		do func(subscribeId uint64, queueId uint64, ch chan Task)
 	}
 
 	queueId    uint64
@@ -94,7 +98,67 @@ func (t *task) Status() string {
 }
 
 func (t *task) StatusSubscribe() (status <-chan Task) {
+	ch := make(chan Task, 1)
 
+	t.ctx.Child("task.statusSubscribe", func(ctx context.Context) {
+		defer close(ch)
+
+		log.Printf("TMClient: Task[%s]: subscribing status...", t.uuid)
+
+		for {
+			var protCtl controller.Controller
+
+			select {
+			case <-t.canceled:
+				return
+			case protCtl = <-t.protocol.ctl:
+			}
+
+			if protCtl == nil {
+				log.Printf("TMClient: Task[%s]: client stopped\n", t.uuid)
+				return
+			}
+
+			res, err := protCtl.RequestSend(&mes.CS_TaskStatusSubscribe_rq{
+				QueueId: t.queueId,
+				UUID:    t.uuid,
+			})
+
+			if err != nil {
+				log.Printf("TMClient: Task[%s]: send status subscribe request fail. %s\n", t.uuid, err)
+				continue
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case resm := <-res:
+				if resm == nil {
+					continue
+				}
+
+				rs := resm.(*mes.SC_TaskStatusSubscribe_rs)
+
+				if rs.SubscribeId == nil {
+					ch <- nil
+					return
+				}
+
+				t.statusSubscribe.do(*rs.SubscribeId, t.queueId, ch)
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-protCtl.Finished():
+			}
+
+			log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
+		}
+
+	})
+
+	return ch
 }
 
 func (t *task) Content() (content <-chan []byte) {

@@ -58,7 +58,7 @@ type client struct {
 
 	task struct {
 		list            sync.Map // map[stateId]*task
-		statusSubscribe sync.Map // map[subscribeId]chan Task
+		statusSubscribe sync.Map // map[subscribeId]*subInfo
 	}
 
 	protocol struct {
@@ -262,6 +262,7 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	t := taskNew()
 	t.ctx = c.ctx.worker
 	t.protocol.ctl = c.protocol.ctl
+	t.statusSubscribe.do = c.taskStatusSubscribe
 
 	t.queueId = queueId
 	t.stateId = stateId
@@ -276,6 +277,10 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 
 func (c *client) queueTasksSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
 	c.queue.tasksSubscribe.Store(subscribeId, &subInfo{queueId, ch})
+}
+
+func (c *client) taskStatusSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
+	c.task.statusSubscribe.Store(subscribeId, &subInfo{queueId, ch})
 }
 
 // ctx should contain vars:
@@ -317,19 +322,25 @@ func (c *client) connMesProcess(ctx context.Context) {
 		it.(*task).cancel(fmt.Errorf(m.Reason))
 
 	case *mes.SC_TaskStatus_ms:
-		ch, ok := c.task.statusSubscribe.Load(m.SubscribeId)
+		sii, ok := c.task.statusSubscribe.Load(m.SubscribeId)
 
 		if !ok {
 			log.Printf("TMClient: not found task status subscribe. subscribeId=%d\n", m.SubscribeId)
 			return
 		}
 
-		t := c.taskNew(0, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+		si := sii.(*subInfo)
+
+		var t *task
+
+		if m.Info != nil {
+			t = c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+		}
 
 		select {
 		case <-ctx.Done():
 			return
-		case ch.(chan Task) <- t:
+		case si.ch <- t:
 		}
 	}
 }
