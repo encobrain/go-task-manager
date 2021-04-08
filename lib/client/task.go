@@ -238,5 +238,53 @@ func (t *task) Err() (err error) {
 }
 
 func (t *task) Reject() (done <-chan struct{}) {
+	ch := make(chan struct{})
 
+	t.ctx.Child("task.reject", func(ctx context.Context) {
+		defer close(ch)
+
+		log.Printf("TMClient: Task[%s]: rejecting task...", t.uuid)
+
+		for {
+			var protCtl controller.Controller
+
+			select {
+			case <-t.canceled:
+				return
+			case protCtl = <-t.protocol.ctl:
+			}
+
+			if protCtl == nil {
+				log.Printf("TMClient: Task[%s]: client stopped\n", t.uuid)
+				return
+			}
+
+			res, err := protCtl.RequestSend(&mes.CS_TaskReject_rq{
+				StateId: t.stateId,
+			})
+
+			if err != nil {
+				log.Printf("TMClient: Task[%s]: send reject request fail. %s\n", t.uuid, err)
+				continue
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-t.canceled:
+				return
+			case resm := <-res:
+				if resm == nil {
+					continue
+				}
+
+				log.Printf("TMClient: Task[%s]: reject done\n", t.uuid)
+
+				return
+			}
+
+		}
+	})
+
+	return ch
 }
