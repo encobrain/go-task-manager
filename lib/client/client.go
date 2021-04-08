@@ -186,11 +186,10 @@ func (c *client) workerStart(ctx context.Context) {
 }
 
 func (c *client) connWorker(ctx context.Context) {
+	addr := fmt.Sprintf("%s:%d", c.conf.Connect.Host, c.conf.Connect.Port)
+	u := url.URL{Scheme: c.conf.Connect.Scheme, Host: addr, Path: c.conf.Connect.Path}
 
 	for {
-		addr := fmt.Sprintf("%s:%d", c.conf.Connect.Host, c.conf.Connect.Port)
-		u := url.URL{Scheme: c.conf.Connect.Scheme, Host: addr, Path: c.conf.Connect.Path}
-
 		log.Printf("TMClient: connecting to %s...\n", u.String())
 
 		conn, _, err := websocket.DefaultDialer.DialContext(ctx, u.String(), nil)
@@ -290,7 +289,14 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 	switch m := inMes.(type) {
 	default:
-		panic(fmt.Errorf("unsupported message: %T", inMes))
+		log.Printf("TMClient: unsupported message: %T\n", inMes)
+
+	case *controller.ErrorReadFail:
+		log.Printf("TMClient: Read fail. %s\n", m.Orig)
+
+	case *controller.ErrorUnhandledResponse:
+		log.Printf("TMClient: Unhandled response. Id=%d", m.Mes.GetResponseId())
+
 	case *mes.SC_QueueSubscribeTask_ms:
 		sii, ok := c.queue.tasksSubscribe.Load(m.SubscribeId)
 
