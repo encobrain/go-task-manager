@@ -255,6 +255,9 @@ func (c *client) connRead(ctx context.Context) {
 
 func (c *client) taskNew(stateId uint64, uuid string, parentUUID string, status string) *task {
 	t := taskNew()
+	t.ctx = c.ctx.worker
+	t.protocol.ctl = c.protocol.ctl
+
 	t.stateId = stateId
 	t.uuid = uuid
 	t.parentUUID = parentUUID
