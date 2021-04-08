@@ -36,6 +36,11 @@ func NewClient(ctx context.Context, config *config.Client) ClientWithControl {
 	return c
 }
 
+type subInfo struct {
+	queueId uint64
+	ch      chan Task
+}
+
 type client struct {
 	mu sync.Mutex
 
@@ -48,7 +53,7 @@ type client struct {
 
 	queue struct {
 		list           sync.Map // map[name]*queue
-		tasksSubscribe sync.Map // map[subscribeId]chan Task
+		tasksSubscribe sync.Map // map[subscribeId]*subInfo
 	}
 
 	task struct {
@@ -253,11 +258,12 @@ func (c *client) connRead(ctx context.Context) {
 	}
 }
 
-func (c *client) taskNew(stateId uint64, uuid string, parentUUID string, status string) *task {
+func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID string, status string) *task {
 	t := taskNew()
 	t.ctx = c.ctx.worker
 	t.protocol.ctl = c.protocol.ctl
 
+	t.queueId = queueId
 	t.stateId = stateId
 	t.uuid = uuid
 	t.parentUUID = parentUUID
@@ -268,8 +274,8 @@ func (c *client) taskNew(stateId uint64, uuid string, parentUUID string, status 
 	return it.(*task)
 }
 
-func (c *client) queueTasksSubscribe(subscribeId uint64, ch chan Task) {
-	c.queue.tasksSubscribe.Store(subscribeId, ch)
+func (c *client) queueTasksSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
+	c.queue.tasksSubscribe.Store(subscribeId, &subInfo{queueId, ch})
 }
 
 // ctx should contain vars:
@@ -281,21 +287,23 @@ func (c *client) connMesProcess(ctx context.Context) {
 	default:
 		panic(fmt.Errorf("unsupported message: %T", inMes))
 	case *mes.SC_QueueSubscribeTask_ms:
-		t := c.taskNew(m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
-
-		ch, ok := c.queue.tasksSubscribe.Load(m.SubscribeId)
+		sii, ok := c.queue.tasksSubscribe.Load(m.SubscribeId)
 
 		if !ok {
 			log.Printf("TMClient: not found tasks subscribe. subscribeId=%d. Task rejected\n", m.SubscribeId)
-			t.Reject()
+			c.taskNew(0, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status).Reject()
 			return
 		}
+
+		si := sii.(*subInfo)
+
+		t := c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 
 		select {
 		case <-ctx.Done():
 			t.Reject()
 			return
-		case ch.(chan Task) <- t:
+		case si.ch <- t:
 		}
 
 	case *mes.SC_TaskCancel_ms:
@@ -316,7 +324,7 @@ func (c *client) connMesProcess(ctx context.Context) {
 			return
 		}
 
-		t := c.taskNew(m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+		t := c.taskNew(0, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 
 		select {
 		case <-ctx.Done():

@@ -36,8 +36,8 @@ type queue struct {
 	ctx context.Context
 
 	tasks struct {
-		new       func(stateId uint64, uuid string, parentUUID string, status string) *task
-		subscribe func(subscribeId uint64, ch chan Task)
+		new       func(queueId uint64, stateId uint64, uuid string, parentUUID string, status string) *task
+		subscribe func(subscribeId uint64, queueId uint64, ch chan Task)
 	}
 
 	protocol struct {
@@ -89,7 +89,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 
 				log.Printf("TMClient: Queue[%d]: created task UUID=%s\n", q.id, rs.UUID)
 
-				t := q.tasks.new(rs.StateId, rs.UUID, parentUUID, status)
+				t := q.tasks.new(q.id, rs.StateId, rs.UUID, parentUUID, status)
 
 				ch <- t
 				return
@@ -143,7 +143,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 
 				log.Printf("TMClient: Queue[%d]: got task UUID=%s\n", q.id, rs.Info.UUID)
 
-				t := q.tasks.new(rs.Info.StateId, rs.Info.UUID, rs.Info.ParentUUID, rs.Info.Status)
+				t := q.tasks.new(q.id, rs.Info.StateId, rs.Info.UUID, rs.Info.ParentUUID, rs.Info.Status)
 
 				ch <- t
 				return
@@ -196,7 +196,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 
 				log.Printf("TMClient: Queue[%d]: subscribe done. subscribeId=%d\n", q.id, *rs.SubscribeId)
 
-				q.tasks.subscribe(*rs.SubscribeId, ch)
+				q.tasks.subscribe(*rs.SubscribeId, q.id, ch)
 			}
 
 			select {
@@ -253,7 +253,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 				var tasks []Task
 
 				for _, i := range rs.Tasks {
-					tasks = append(tasks, q.tasks.new(i.StateId, i.UUID, i.ParentUUID, i.Status))
+					tasks = append(tasks, q.tasks.new(q.id, i.StateId, i.UUID, i.ParentUUID, i.Status))
 				}
 
 				ch <- tasks
