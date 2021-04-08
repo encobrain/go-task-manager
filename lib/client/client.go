@@ -46,8 +46,12 @@ type client struct {
 		worker context.Context
 	}
 
-	queue sync.Map // map[name]*queue
-	task  sync.Map // map[stateId]*task
+	queue struct {
+		list           sync.Map // map[name]*queue
+		tasksSubscribe sync.Map // map[subscribeId]chan Task
+	}
+
+	task sync.Map // map[stateId]*task
 
 	protocol struct {
 		ctl chan controller.Controller // if closed - client stopped
@@ -60,7 +64,7 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 	c.ctx.glob.Child("queue.get", func(ctx context.Context) {
 		defer close(ch)
 
-		queue, ok := c.queue.Load(name)
+		queue, ok := c.queue.list.Load(name)
 
 		if ok {
 			ch <- queue.(Queue)
@@ -107,11 +111,12 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 func (c *client) queueNew(name string, id uint64) *queue {
 	q := newQueue()
 	q.id = id
-	q.task = &c.task
+	q.tasks.new = c.taskNew
+	q.tasks.subscribe = c.queueTasksSubscribe
 	q.protocol.ctl = c.protocol.ctl
 	q.ctx = c.ctx.worker
 
-	iq, _ := c.queue.LoadOrStore(name, q)
+	iq, _ := c.queue.list.LoadOrStore(name, q)
 
 	return iq.(*queue)
 }
@@ -243,15 +248,48 @@ func (c *client) connRead(ctx context.Context) {
 	}
 }
 
+func (c *client) taskNew(stateId uint64, uuid string, parentUUID string, status string) *task {
+	t := taskNew()
+	t.stateId = stateId
+	t.uuid = uuid
+	t.parentUUID = parentUUID
+	t.status = status
+
+	it, _ := c.task.LoadOrStore(stateId, t)
+
+	return it.(*task)
+}
+
+func (c *client) queueTasksSubscribe(subscribeId uint64, ch chan Task) {
+	c.queue.tasksSubscribe.Store(subscribeId, ch)
+}
+
 // ctx should contain vars:
 //   mes *protocol.Message
 func (c *client) connMesProcess(ctx context.Context) {
 	inMes := ctx.Value("mes").(protocol.Message)
 
-	switch inMes.(type) {
+	switch m := inMes.(type) {
 	default:
 		panic(fmt.Errorf("unsupported message: %T", inMes))
 	case *mes.SC_QueueSubscribeTask_ms:
+		t := c.taskNew(m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+
+		ch, ok := c.queue.tasksSubscribe.Load(m.SubscribeId)
+
+		if !ok {
+			log.Printf("TMClient: not found tasks subscribe. subscribeId=%d. Task rejected\n", m.SubscribeId)
+			t.Reject()
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			t.Reject()
+			return
+		case ch.(chan Task) <- t:
+		}
+
 	case *mes.SC_TaskCancel_ms:
 	case *mes.SC_TaskStatus_ms:
 	}
