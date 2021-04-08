@@ -51,7 +51,10 @@ type client struct {
 		tasksSubscribe sync.Map // map[subscribeId]chan Task
 	}
 
-	task sync.Map // map[stateId]*task
+	task struct {
+		list            sync.Map // map[stateId]*task
+		statusSubscribe sync.Map // map[subscribeId]chan Task
+	}
 
 	protocol struct {
 		ctl chan controller.Controller // if closed - client stopped
@@ -231,6 +234,8 @@ func (c *client) connWorker(ctx context.Context) {
 func (c *client) connRead(ctx context.Context) {
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 
+	defer ctx.Cancel(fmt.Errorf("connection read finished"))
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -255,7 +260,7 @@ func (c *client) taskNew(stateId uint64, uuid string, parentUUID string, status 
 	t.parentUUID = parentUUID
 	t.status = status
 
-	it, _ := c.task.LoadOrStore(stateId, t)
+	it, _ := c.task.list.LoadOrStore(stateId, t)
 
 	return it.(*task)
 }
@@ -291,7 +296,7 @@ func (c *client) connMesProcess(ctx context.Context) {
 		}
 
 	case *mes.SC_TaskCancel_ms:
-		it, ok := c.task.Load(m.StateId)
+		it, ok := c.task.list.Load(m.StateId)
 
 		if !ok {
 			log.Printf("TMClient: not found task for cancel. stateId=%d\n", m.StateId)
@@ -301,5 +306,19 @@ func (c *client) connMesProcess(ctx context.Context) {
 		it.(*task).cancel(fmt.Errorf(m.Reason))
 
 	case *mes.SC_TaskStatus_ms:
+		ch, ok := c.task.statusSubscribe.Load(m.SubscribeId)
+
+		if !ok {
+			log.Printf("TMClient: not found task status subscribe. subscribeId=%d\n", m.SubscribeId)
+			return
+		}
+
+		t := c.taskNew(m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+
+		select {
+		case <-ctx.Done():
+			return
+		case ch.(chan Task) <- t:
+		}
 	}
 }
