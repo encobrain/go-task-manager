@@ -16,7 +16,7 @@ func (CS_TaskStatusSubscribe_rq) New() interface{} {
 
 type SC_TaskStatusSubscribe_rs struct {
 	RsId
-	SubscribeId *uint64 // if nil - queue or task not exists
+	SubscribeId *uint64 // if nil - queue or task not exists. Individual for each connection
 }
 
 func (SC_TaskStatusSubscribe_rs) New() interface{} {
