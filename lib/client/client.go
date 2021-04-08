@@ -189,10 +189,27 @@ func (c *client) connWorker(ctx context.Context) {
 	addr := fmt.Sprintf("%s:%d", c.conf.Connect.Host, c.conf.Connect.Port)
 	u := url.URL{Scheme: c.conf.Connect.Scheme, Host: addr, Path: c.conf.Connect.Path}
 
+	var conn *websocket.Conn
+	var err error
+
+	defer func() {
+		if conn != nil {
+			err = conn.Close()
+
+			if err != nil {
+				log.Printf("TMClient: close connection fail. %s\n", err)
+			} else {
+				log.Printf("TMClient: connection closed\n")
+			}
+
+			c.connDisconnected()
+		}
+	}()
+
 	for {
 		log.Printf("TMClient: connecting to %s...\n", u.String())
 
-		conn, _, err := websocket.DefaultDialer.DialContext(ctx, u.String(), nil)
+		conn, _, err = websocket.DefaultDialer.DialContext(ctx, u.String(), nil)
 
 		if err != nil {
 			log.Printf("TMClient: connect fail. %s\n", err)
@@ -226,11 +243,31 @@ func (c *client) connWorker(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case <-protCtl.Finished():
+				c.connDisconnected()
 				break wait
 			case c.protocol.ctl <- protCtl:
 			}
 		}
 	}
+}
+
+func (c *client) connDisconnected() {
+	c.task.list.Range(func(stateId, itask interface{}) bool {
+		task := itask.(*task)
+		task.cancel(fmt.Errorf("client disconnected"))
+		c.task.list.Delete(stateId)
+		return true
+	})
+
+	c.task.statusSubscribe.Range(func(subId, _ interface{}) bool {
+		c.task.statusSubscribe.Delete(subId)
+		return true
+	})
+
+	c.queue.tasksSubscribe.Range(func(subId, _ interface{}) bool {
+		c.queue.tasksSubscribe.Delete(subId)
+		return true
+	})
 }
 
 // ctx should contain vars:
