@@ -291,6 +291,15 @@ func (c *client) connMesProcess(ctx context.Context) {
 		}
 
 	case *mes.SC_TaskCancel_ms:
+		it, ok := c.task.Load(m.StateId)
+
+		if !ok {
+			log.Printf("TMClient: not found task for cancel. stateId=%d\n", m.StateId)
+			return
+		}
+
+		it.(*task).cancel(fmt.Errorf(m.Reason))
+
 	case *mes.SC_TaskStatus_ms:
 	}
 }
