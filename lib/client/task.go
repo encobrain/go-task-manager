@@ -1,6 +1,13 @@
 package client
 
-import "sync"
+import (
+	"fmt"
+	"github.com/encobrain/go-context.v2"
+	"github.com/encobrain/go-task-manager/internal/protocol/controller"
+	"github.com/encobrain/go-task-manager/internal/protocol/mes"
+	"log"
+	"sync"
+)
 
 // Task in any moment may be canceled. See Canceled()
 type Task interface {
@@ -42,6 +49,12 @@ func taskNew() *task {
 }
 
 type task struct {
+	ctx context.Context
+
+	protocol struct {
+		ctl chan controller.Controller
+	}
+
 	stateId    uint64
 	uuid       string
 	parentUUID string
@@ -82,7 +95,62 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 }
 
 func (t *task) Content() (content <-chan []byte) {
+	ch := make(chan []byte, 1)
 
+	t.ctx.Child("task.content", func(ctx context.Context) {
+		defer close(ch)
+
+		log.Printf("TMClient: Task[%s]: getting content...", t.uuid)
+
+		for {
+			var protCtl controller.Controller
+
+			select {
+			case <-t.canceled:
+				return
+			case protCtl = <-t.protocol.ctl:
+			}
+
+			if protCtl == nil {
+				log.Printf("TMClient: Task[%s]: client stopped\n", t.uuid)
+				return
+			}
+
+			res, err := protCtl.RequestSend(&mes.CS_TaskContent_rq{
+				StateId: t.stateId,
+			})
+
+			if err != nil {
+				log.Printf("TMClient: Task[%s]: send request fail. %s\n", t.uuid, err)
+				continue
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-t.canceled:
+				return
+			case resm := <-res:
+				if resm == nil {
+					continue
+				}
+
+				rs := resm.(*mes.SC_TaskContent_rs)
+
+				if rs.Content == nil {
+					return
+				}
+
+				log.Printf("TMClient: Task[%s]: got content\n", t.uuid)
+
+				ch <- *rs.Content
+				return
+			}
+
+		}
+	})
+
+	return ch
 }
 
 func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
