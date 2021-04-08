@@ -223,7 +223,64 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 }
 
 func (t *task) Remove() (done <-chan bool) {
+	ch := make(chan bool, 1)
 
+	t.ctx.Child("task.remove", func(ctx context.Context) {
+		defer close(ch)
+
+		log.Printf("TMClient: Task[%s]: removing task...", t.uuid)
+
+		for {
+			var protCtl controller.Controller
+
+			select {
+			case <-t.canceled:
+				return
+			case protCtl = <-t.protocol.ctl:
+			}
+
+			if protCtl == nil {
+				log.Printf("TMClient: Task[%s]: client stopped\n", t.uuid)
+				return
+			}
+
+			res, err := protCtl.RequestSend(&mes.CS_TaskRemove_rq{
+				QueueId: t.queueId,
+				StateId: t.stateId,
+			})
+
+			if err != nil {
+				log.Printf("TMClient: Task[%s]: send remove request fail. %s\n", t.uuid, err)
+				continue
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-t.canceled:
+				return
+			case resm := <-res:
+				if resm == nil {
+					continue
+				}
+
+				rs := resm.(*mes.SC_TaskRemove_rs)
+
+				if rs.Ok == false {
+					t.cancel(fmt.Errorf("canceled or stateId or queueId invalid"))
+					return
+				}
+
+				log.Printf("TMClient: Task[%s]: remove done\n", t.uuid)
+
+				ch <- true
+				return
+			}
+
+		}
+	})
+
+	return ch
 }
 
 func (t *task) Canceled() (canceled <-chan struct{}) {
