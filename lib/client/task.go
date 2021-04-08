@@ -26,6 +26,8 @@ type Task interface {
 	// Chan closed with result.
 	Content() (content <-chan []byte)
 	// StatusSet sets status of task and new content.
+	// Previous task will be canceled on success
+	// No need listen to task.Canceled() and statusSet simultaniously.
 	// If <-done == false - task canceled
 	StatusSet(status string, content []byte) (done <-chan bool)
 	// Remove removes task from queue.
@@ -55,6 +57,7 @@ type task struct {
 		ctl chan controller.Controller
 	}
 
+	queueId    uint64
 	stateId    uint64
 	uuid       string
 	parentUUID string
@@ -121,7 +124,7 @@ func (t *task) Content() (content <-chan []byte) {
 			})
 
 			if err != nil {
-				log.Printf("TMClient: Task[%s]: send request fail. %s\n", t.uuid, err)
+				log.Printf("TMClient: Task[%s]: send content request fail. %s\n", t.uuid, err)
 				continue
 			}
 
@@ -154,7 +157,69 @@ func (t *task) Content() (content <-chan []byte) {
 }
 
 func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
+	ch := make(chan bool, 1)
 
+	t.ctx.Child("task.statusSet", func(ctx context.Context) {
+		defer close(ch)
+
+		log.Printf("TMClient: Task[%s]: setting status=%s...", t.uuid, status)
+
+		for {
+			var protCtl controller.Controller
+
+			select {
+			case <-t.canceled:
+				return
+			case protCtl = <-t.protocol.ctl:
+			}
+
+			if protCtl == nil {
+				log.Printf("TMClient: Task[%s]: client stopped\n", t.uuid)
+				return
+			}
+
+			res, err := protCtl.RequestSend(&mes.CS_TaskStatusSet_rq{
+				QueueId: t.queueId,
+				StateId: t.stateId,
+				Status:  status,
+				Content: content,
+			})
+
+			if err != nil {
+				log.Printf("TMClient: Task[%s]: send set status request fail. %s\n", t.uuid, err)
+				continue
+			}
+
+			select {
+			case <-t.ctx.Done():
+				return
+			case <-t.canceled:
+				return
+			case resm := <-res:
+				if resm == nil {
+					continue
+				}
+
+				rs := resm.(*mes.SC_TaskStatusSet_rs)
+
+				if rs.StateId == nil {
+					t.cancel(fmt.Errorf("canceled or stateId or queueId invalid"))
+					return
+				}
+
+				log.Printf("TMClient: Task[%s]: set status done\n", t.uuid)
+
+				t.status = status
+				t.stateId = *rs.StateId
+
+				ch <- true
+				return
+			}
+
+		}
+	})
+
+	return ch
 }
 
 func (t *task) Remove() (done <-chan bool) {
