@@ -9,10 +9,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config struct{}
+type Config struct {
+	Path string `long:"path"   env:"CONFIG_PATH"   description:"A path with configuration files"   default:"config-dev"`
+}
 
 type pathfiler interface {
 	Pathfile() string
+}
+
+type initer interface {
+	Init()
+}
+
+type applier interface {
+	Apply()
 }
 
 func (c *Config) CatchError(e interface{}) (err error) {
@@ -30,10 +40,10 @@ func (c *Config) CatchError(e interface{}) (err error) {
 	return
 }
 
-func (c *Config) Load(to pathfiler, dir string) {
-	pathfile := to.Pathfile()
+func (c *Config) Load(conf pathfiler) {
+	pathfile := conf.Pathfile()
 
-	f, err := os.Open(filepath.Resolve(true, dir, pathfile))
+	f, err := os.Open(filepath.Resolve(true, c.Path, pathfile))
 
 	if err != nil {
 		panic(err)
@@ -43,9 +53,17 @@ func (c *Config) Load(to pathfiler, dir string) {
 
 	decoder := yaml.NewDecoder(f)
 
-	err = decoder.Decode(to)
+	err = decoder.Decode(conf)
 
 	if err != nil {
 		panic(err)
+	}
+
+	if c, ok := conf.(initer); ok {
+		c.Init()
+	}
+
+	if c, ok := conf.(applier); ok {
+		c.Apply()
 	}
 }
