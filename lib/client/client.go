@@ -119,6 +119,7 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 func (c *client) queueNew(name string, id uint64) *queue {
 	q := newQueue()
 	q.id = id
+	q.name = name
 	q.tasks.new = c.taskNew
 	q.tasks.subscribe = c.queueTasksSubscribe
 	q.protocol.ctl = c.protocol.ctl

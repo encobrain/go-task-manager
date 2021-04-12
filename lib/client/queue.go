@@ -9,6 +9,8 @@ import (
 )
 
 type Queue interface {
+	// Name returns queue name
+	Name() string
 	// TaskNew creates new task with parrentUUID. parentUUID may be empty.
 	// Chan closed with result.
 	// If nil - client stopped.
@@ -32,8 +34,9 @@ func newQueue() *queue {
 }
 
 type queue struct {
-	id  uint64
-	ctx context.Context
+	id   uint64
+	name string
+	ctx  context.Context
 
 	tasks struct {
 		new       func(queueId uint64, stateId uint64, uuid string, parentUUID string, status string) *task
@@ -43,6 +46,10 @@ type queue struct {
 	protocol struct {
 		ctl chan controller.Controller
 	}
+}
+
+func (q *queue) Name() string {
+	return q.name
 }
 
 func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task <-chan Task) {
