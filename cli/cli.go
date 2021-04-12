@@ -42,7 +42,7 @@ type cli struct {
 func New() *cli {
 	cli := new(cli)
 	cli.preParser = flags.NewParser(&cli.preOptions, flags.IgnoreUnknown|flags.PassAfterNonOption|flags.PassDoubleDash)
-	cli.parser = flags.NewParser(cli.options, flags.Default)
+	cli.parser = flags.NewParser(&cli.options, flags.Default)
 
 	return cli
 }
