@@ -5,6 +5,7 @@ import (
 	"github.com/encobrain/go-task-manager/lib/storage"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"log"
 	"sync"
 )
 
@@ -34,6 +35,25 @@ func (q *queue) stop() {
 	defer q.mu.Unlock()
 
 	q.isStarted = false
+
+	q.task.list.Range(func(uuid, it interface{}) bool {
+		t := it.(*task)
+
+		if t.updated {
+			err := q.db.Save(t.dbTask).Error
+
+			if err != nil {
+				log.Printf("Queue[%s]: Save task `%s` with %v fail. %s", q.Name, t.UUID, t.dbTask, err)
+			}
+
+			t.updated = false
+		}
+
+		return true
+	})
+
+	q.task.list = sync.Map{}
+	q.task.all = false
 }
 
 func (q *queue) taskNew(parentUUID string, status string, content []byte) *storage.TaskInfo {

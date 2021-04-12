@@ -71,6 +71,14 @@ func (s *Storage) Stop() {
 
 	s.isStarted = false
 
+	s.cache.queueByName.Range(func(qname, iq interface{}) bool {
+		iq.(*queue).stop()
+		return true
+	})
+
+	s.cache.queueByName = sync.Map{}
+	s.cache.queueById = sync.Map{}
+
 	log.Printf("SQLiteStorage: stopped\n")
 }
 
