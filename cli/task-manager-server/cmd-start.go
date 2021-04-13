@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/encobrain/go-task-manager/cli"
 )
 
@@ -14,7 +15,7 @@ func (c CmdStart) Execute(args []string) error {
 	success, err := c.CmdStart.Execute(conf.Process.Run.PidPathfile)
 
 	if err != nil || !success {
-		return err
+		return fmt.Errorf("execute start fail. %s", err)
 	}
 
 	return errors.New("not implemented")
