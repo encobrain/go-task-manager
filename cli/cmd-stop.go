@@ -28,6 +28,11 @@ func (CmdStop) Execute(pidPathfile string) error {
 		return err
 	}
 
+	if process == nil {
+		log.Printf("Service not started\n")
+		return nil
+	}
+
 	err = process.Signal(os.Interrupt)
 
 	if err != nil {
