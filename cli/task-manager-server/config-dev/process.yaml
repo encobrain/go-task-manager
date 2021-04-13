@@ -1,2 +1,2 @@
 run:
-  pid_pathfile: "./config-dev/task-manager-server.pid"
+  pid_pathfile: "./task-manager-server.pid"
