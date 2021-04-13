@@ -30,10 +30,10 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 			id := tsss.new()
 			res.SubscribeId = &id
 
-			procCtx := ctx.Child("task.subscribe.process", s.taskStatusSubscribeProcess)
-			procCtx.ValueSet("task.uuid", req.UUID)
-			procCtx.ValueSet("subscribe.id", id)
-			procCtx.ValueSet("queue", queue)
+			ctx.Child("task.subscribe.process", s.taskStatusSubscribeProcess).
+				ValueSet("task.uuid", req.UUID).
+				ValueSet("subscribe.id", id).
+				ValueSet("queue", queue).Go()
 		}
 	}
 

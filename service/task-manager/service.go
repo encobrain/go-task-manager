@@ -64,7 +64,7 @@ func (s *tmService) Start() {
 		return
 	}
 
-	s.ctx.worker = s.ctx.glob.Child("worker", s.workerStart)
+	s.ctx.worker = s.ctx.glob.Child("worker", s.workerStart).Go()
 }
 
 func (s *tmService) Stop() {

@@ -129,10 +129,10 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 
 		receive := s.task.router.Subscribe(queue, req.ParentUUID)
 
-		ctx := ctx.Child("queue.subscribe.process", s.queueSubscribeProcess)
-		ctx.ValueSet("receive", receive)
-		ctx.ValueSet("subscribe.id", id)
-		ctx.ValueSet("subscribe.queue", queue)
+		ctx.Child("queue.subscribe.process", s.queueSubscribeProcess).
+			ValueSet("receive", receive).
+			ValueSet("subscribe.id", id).
+			ValueSet("subscribe.queue", queue).Go()
 	}
 
 	err := protCtl.ResponseSend(req, res)

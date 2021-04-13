@@ -96,8 +96,8 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 		case <-protCtl.Finished():
 			return
 		case task := <-receive:
-			ctx := ctx.Child("send", s.queueSubscribeSend)
-			ctx.ValueSet("task", task)
+			ctx.Child("send", s.queueSubscribeSend).
+				ValueSet("task", task).Go()
 		}
 	}
 }

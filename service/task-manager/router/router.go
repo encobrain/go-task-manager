@@ -57,7 +57,7 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 			for _, t := range tasks {
 				r.Route(queue, t)
 			}
-		})
+		}).Go()
 	}
 
 	return s.getChannel(parentUUID)
@@ -85,5 +85,5 @@ func (r *Router) Route(queue storage.Queue, task storage.Task) {
 		case allCh <- task:
 		case parCh <- task:
 		}
-	})
+	}).Go()
 }

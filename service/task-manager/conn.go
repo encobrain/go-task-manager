@@ -41,8 +41,8 @@ func (s *tmService) connWorker(ctx context.Context) {
 				return
 			}
 
-			ctx := ctx.Child("serve", s.connServe)
-			ctx.ValueSet("conn", conn)
+			ctx.Child("serve", s.connServe).
+				ValueSet("conn", conn).Go()
 		}
 	}
 }
@@ -80,16 +80,16 @@ func (s *tmService) connServe(ctx context.Context) {
 				return
 			}
 
-			ctx := ctx.Child("mes.process", s.mesProcess)
-			ctx.ValueSet("mes", mes)
+			ctx.Child("mes.process", s.mesProcess).
+				ValueSet("mes", mes).Go()
 		case req, ok := <-protCtl.RequestGet():
 			if !ok {
 				log.Printf("Protocol finished work\n")
 				return
 			}
 
-			ctx := ctx.Child("req.process", s.reqProcess)
-			ctx.ValueSet("req", req)
+			ctx.Child("req.process", s.reqProcess).
+				ValueSet("req", req).Go()
 		}
 	}
 }

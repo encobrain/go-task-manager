@@ -23,9 +23,13 @@ func (s *tmService) workerStart(ctx context.Context) {
 	s.conn.serve = make(chan *websocket.Conn)
 	defer close(s.conn.serve)
 
-	ctx.Child("conn.worker", s.connWorker)
+	ctx.Child("conn.worker", s.connWorker).Go()
 
 	s.task.router = router.New(ctx)
+
+	if !s.statusSet(service.StatusStarted, service.StatusStarting) {
+		panic(fmt.Errorf("set started status fail"))
+	}
 
 	for {
 		select {

@@ -49,8 +49,8 @@ func (ts *taskState) getOrNewId(task storage.Task) (id uint64) {
 	ts.ids[chId] = id
 	ts.tasks[id] = task
 
-	wCtx := ts.ctx.Child("task.state.watcher", ts.watcher)
-	wCtx.ValueSet("task", task)
+	wCtx := ts.ctx.Child("task.state.watcher", ts.watcher).
+		ValueSet("task", task).Go()
 
 	ts.watchers[chId] = wCtx
 
