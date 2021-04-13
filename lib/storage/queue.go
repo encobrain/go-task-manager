@@ -25,6 +25,7 @@ func NewQueue(stor Storage, info *QueueInfo) Queue {
 	q := &queue{
 		storage: stor,
 		info:    info,
+		task:    map[string]*task{},
 	}
 
 	return q
