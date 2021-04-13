@@ -46,7 +46,7 @@ func (c *Config) Load(conf pathfiler) {
 	f, err := os.Open(filepath.Resolve(true, c.Path, pathfile))
 
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("open %s fail. %s", pathfile, err))
 	}
 
 	defer f.Close()
@@ -56,7 +56,7 @@ func (c *Config) Load(conf pathfiler) {
 	err = decoder.Decode(conf)
 
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("decode content from %s fail. %s", pathfile, err))
 	}
 
 	if c, ok := conf.(initer); ok {
