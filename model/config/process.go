@@ -1,6 +1,9 @@
 package config
 
-import "runtime"
+import (
+	"github.com/encobrain/go-task-manager/lib/filepath"
+	"runtime"
+)
 
 type Process struct {
 	Name string `yaml:"name"   env:"PROCESS_NAME"   long:"name"   description:"Process name"`
@@ -14,6 +17,10 @@ type Process struct {
 
 func (p Process) Pathfile() string {
 	return "process.yaml"
+}
+
+func (p *Process) Init() {
+	p.Run.PidPathfile = filepath.Resolve(true, p.Run.PidPathfile)
 }
 
 func (p *Process) Apply() {
