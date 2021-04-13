@@ -3,9 +3,14 @@ package cli
 import (
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
-type CmdStart struct{}
+type CmdStart struct {
+	shutdownSignals chan os.Signal
+}
 
 func (CmdStart) Name() string {
 	return "start"
@@ -19,7 +24,7 @@ func (CmdStart) LongDescription() string {
 	return "The Start command starts the service if it not started"
 }
 
-func (CmdStart) Execute(pidPathfile string) (success bool, err error) {
+func (c *CmdStart) Execute(pidPathfile string) (success bool, err error) {
 	is, err := ProcessIsRunned(pidPathfile)
 
 	if err != nil {
@@ -37,8 +42,15 @@ func (CmdStart) Execute(pidPathfile string) (success bool, err error) {
 			err = fmt.Errorf("save process pid fail. %s", err)
 		} else {
 			success = true
+			c.shutdownSignals = make(chan os.Signal, 2)
+
+			signal.Notify(c.shutdownSignals, syscall.SIGTERM, syscall.SIGINT)
 		}
 	}
 
 	return
+}
+
+func (c *CmdStart) ShutdownSignals() <-chan os.Signal {
+	return c.shutdownSignals
 }
