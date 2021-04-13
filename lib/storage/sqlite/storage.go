@@ -6,8 +6,11 @@ import (
 	confStorage "github.com/encobrain/go-task-manager/model/config/lib/storage"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"log"
+	"os"
 	"sync"
+	"time"
 )
 
 func New(config *confStorage.SQLite) *Storage {
@@ -41,7 +44,19 @@ func (s *Storage) Start() {
 
 	log.Printf("SQLiteStorage: starting...\n")
 
-	db, err := gorm.Open(sqlite.Open(s.conf.Db.Path))
+	dbLog := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+		logger.Config{
+			SlowThreshold:             time.Second, // Slow SQL threshold
+			LogLevel:                  logger.Info, // Log level
+			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
+			Colorful:                  false,       // Disable color
+		},
+	)
+
+	db, err := gorm.Open(sqlite.Open(s.conf.Db.Path), &gorm.Config{
+		Logger: dbLog,
+	})
 
 	if err != nil {
 		panic(fmt.Errorf("open db `%s` fail. %s", s.conf.Db.Path, err))
