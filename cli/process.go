@@ -29,7 +29,11 @@ func ProcessGet(pidPathfile string) (process *os.Process, err error) {
 	process, err = os.FindProcess(pid)
 
 	if err != nil {
-		err = fmt.Errorf("find process(PID=%v) fail. %s\n", pid, err)
+		if e, ok := err.(*os.SyscallError); ok && e.Syscall == "OpenProcess" {
+			return nil, nil
+		}
+
+		err = fmt.Errorf("find process(PID=%v) fail. %s", pid, err)
 	}
 
 	return
@@ -55,6 +59,10 @@ func ProcessSavePid(pidPathfile string) (err error) {
 	pid := os.Getpid()
 
 	err = ioutil.WriteFile(pidPathfile, []byte(strconv.Itoa(pid)), 0664)
+
+	if err != nil {
+		err = fmt.Errorf("write file %s fail. %s", pidPathfile, err)
+	}
 
 	return
 }

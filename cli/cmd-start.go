@@ -1,6 +1,9 @@
 package cli
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type CmdStart struct{}
 
@@ -20,7 +23,7 @@ func (CmdStart) Execute(pidPathfile string) (success bool, err error) {
 	is, err := ProcessIsRunned(pidPathfile)
 
 	if err != nil {
-		return
+		return false, fmt.Errorf("get process state fail. %s", err)
 	}
 
 	if is {
@@ -30,7 +33,9 @@ func (CmdStart) Execute(pidPathfile string) (success bool, err error) {
 
 		err = ProcessSavePid(pidPathfile)
 
-		if err == nil {
+		if err != nil {
+			err = fmt.Errorf("save process pid fail. %s", err)
+		} else {
 			success = true
 		}
 	}

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -21,7 +22,7 @@ type cli struct {
 
 func New(options interface{}) *cli {
 	cli := new(cli)
-	cli.parser = flags.NewParser(options, flags.Default)
+	cli.parser = flags.NewParser(options, flags.HelpFlag|flags.PassDoubleDash)
 
 	return cli
 }
@@ -35,13 +36,14 @@ func (c *cli) Run() {
 	if _, err := c.parser.Parse(); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok {
 			if flagsErr.Type == flags.ErrHelp || flagsErr.Type == flags.ErrCommandRequired {
+				fmt.Println(flagsErr.Message)
 				os.Exit(0)
 			} else {
 				log.Printf("Unknown error. %s", flagsErr)
 				os.Exit(1)
 			}
 		} else {
-			log.Printf("Parse cli options fail. %s\n", err)
+			log.Printf("Execute fail. %s\n", err)
 
 			os.Exit(1)
 		}
