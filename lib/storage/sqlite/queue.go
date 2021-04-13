@@ -71,6 +71,7 @@ func (q *queue) taskNew(parentUUID string, status string, content []byte) *stora
 	}
 
 	dbt := &dbTask{
+		QueueID:    q.ID,
 		UUID:       uuid.String(),
 		ParentUUID: parentUUID,
 		Status:     status,
