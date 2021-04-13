@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"net/url"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -174,6 +175,7 @@ func (c *client) Stop() (done <-chan struct{}) {
 func (c *client) workerStart(ctx context.Context) {
 	ctx.PanicHandlerSet(func(ctx context.Context, panicVal interface{}) {
 		log.Printf("TMClient: worker panic. %s\n", panicVal)
+		debug.PrintStack()
 		ctx.Cancel(fmt.Errorf("panic"))
 	})
 

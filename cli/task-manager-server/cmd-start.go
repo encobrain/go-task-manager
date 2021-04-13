@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"time"
 )
 
@@ -62,6 +63,7 @@ func (c CmdStart) Execute(args []string) (err error) {
 
 func (c CmdStart) panicHandler(ctx context.Context, panicErr interface{}) {
 	log.Printf("Service panic. %s\n", panicErr)
+	debug.PrintStack()
 
 	ctx.Cancel(fmt.Errorf("service panic"))
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"github.com/gorilla/websocket"
 	"log"
+	"runtime/debug"
 )
 
 func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
@@ -58,6 +59,7 @@ func (s *tmService) connServe(ctx context.Context) {
 	ctx.PanicHandlerSet(func(ctx context.Context, panicVal interface{}) {
 		if panicVal != true {
 			log.Printf("Connection serve panic. %s\n", panicVal)
+			debug.PrintStack()
 		}
 
 		ctx.Cancel(fmt.Errorf("panic"))

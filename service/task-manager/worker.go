@@ -7,10 +7,12 @@ import (
 	"github.com/encobrain/go-task-manager/service/task-manager/router"
 	"github.com/gorilla/websocket"
 	"log"
+	"runtime/debug"
 )
 
 func (s *tmService) workerPanicHandler(ctx context.Context, panicErr interface{}) {
 	log.Printf("Service panic. %s\n", panicErr)
+	debug.PrintStack()
 
 	ctx.Cancel(fmt.Errorf("panic"))
 
