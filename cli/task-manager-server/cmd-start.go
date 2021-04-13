@@ -91,10 +91,12 @@ func (c CmdStart) startServer(ctx context.Context) {
 	tmService := task_manager.New(ctx)
 	tmService.Start()
 
-	servMux := &http.ServeMux{}
+	serveMux := http.NewServeMux()
 	upgrader := websocket.Upgrader{}
 
-	http.HandleFunc(conf.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
+	serveMux.HandleFunc(conf.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("New connection\n")
+
 		conn, err := upgrader.Upgrade(w, r, nil)
 
 		if err != nil {
@@ -121,7 +123,7 @@ func (c CmdStart) startServer(ctx context.Context) {
 
 	server := http.Server{
 		Addr:    addr,
-		Handler: servMux,
+		Handler: serveMux,
 	}
 
 	ctx.Child("listen", func(_ context.Context) {
