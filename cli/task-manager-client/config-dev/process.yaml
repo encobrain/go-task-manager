@@ -1,0 +1,2 @@
+run:
+  pid_pathfile: "./task-manager-client.pid"
