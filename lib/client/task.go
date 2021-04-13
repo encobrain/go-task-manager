@@ -156,7 +156,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 			log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
 		}
 
-	})
+	}).Go()
 
 	return ch
 }
@@ -215,7 +215,7 @@ func (t *task) Content() (content <-chan []byte) {
 			}
 
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -281,7 +281,7 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 			}
 
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -342,7 +342,7 @@ func (t *task) Remove() (done <-chan bool) {
 			}
 
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -405,7 +405,7 @@ func (t *task) Reject() (done <-chan struct{}) {
 			}
 
 		}
-	})
+	}).Go()
 
 	return ch
 }

@@ -2,6 +2,7 @@ package protocol
 
 type Message interface {
 	New() interface{}
+	Code() byte
 }
 
 type Request interface {

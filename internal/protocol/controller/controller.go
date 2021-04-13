@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/encobrain/go-task-manager/internal/protocol"
 	"github.com/gorilla/websocket"
 	"sync"
@@ -28,16 +29,19 @@ type Controller interface {
 	ResponseSend(req protocol.Request, res protocol.Response) error
 }
 
-func New(codeMes map[byte]protocol.Message, conn *websocket.Conn) Controller {
+func New(messages []protocol.Message, conn *websocket.Conn) Controller {
 	c := &controller{
 		conn:     conn,
-		codeMes:  codeMes,
+		codeMes:  make(map[byte]protocol.Message),
 		finished: make(chan struct{}),
-		mesCode:  make(map[protocol.Message]byte, len(codeMes)),
 	}
 
-	for code, mes := range codeMes {
-		c.mesCode[mes] = code
+	for _, mes := range messages {
+		if c.codeMes[mes.Code()] != nil {
+			panic(fmt.Errorf("message with code `%x` already exists", mes.Code()))
+		}
+
+		c.codeMes[mes.Code()] = mes
 	}
 
 	c.incoming.mess = make(chan protocol.Message)
@@ -51,7 +55,6 @@ func New(codeMes map[byte]protocol.Message, conn *websocket.Conn) Controller {
 type controller struct {
 	conn    *websocket.Conn
 	codeMes map[byte]protocol.Message
-	mesCode map[protocol.Message]byte
 
 	incoming struct {
 		mess chan protocol.Message
@@ -67,20 +70,13 @@ type controller struct {
 }
 
 func (c *controller) MessageSend(mes protocol.Message) (err error) {
-	code, ok := c.mesCode[mes]
-
-	if !ok {
-		err = ErrorUnknownMes
-		return
-	}
-
 	bytes, err := json.Marshal(mes)
 
 	if err != nil {
 		return
 	}
 
-	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{code}, bytes...))
+	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{mes.Code()}, bytes...))
 }
 
 func (c *controller) MessageGet() (mess <-chan protocol.Message) {
@@ -102,7 +98,7 @@ func (c *controller) RequestSend(req protocol.Request) (res <-chan protocol.Resp
 		close(resCh)
 	}
 
-	return resCh, nil
+	return resCh, err
 }
 
 func (c *controller) RequestGet() (reqs <-chan protocol.Request) {

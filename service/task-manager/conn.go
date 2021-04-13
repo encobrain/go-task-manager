@@ -63,7 +63,7 @@ func (s *tmService) connServe(ctx context.Context) {
 		ctx.Cancel(fmt.Errorf("panic"))
 	})
 
-	protCtl := controller.New(mes.Codes, conn)
+	protCtl := controller.New(mes.Messages, conn)
 
 	ctx.ValueSet("protocol.ctl", protCtl)
 	ctx.ValueSet("task.state", newTaskState(ctx))

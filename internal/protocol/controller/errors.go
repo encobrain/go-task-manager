@@ -5,8 +5,6 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol"
 )
 
-var ErrorUnknownMes = fmt.Errorf("unknown message type")
-
 type ErrorReadFail struct {
 	Orig error
 }
@@ -19,6 +17,10 @@ func (e *ErrorReadFail) New() interface{} {
 	return &ErrorReadFail{}
 }
 
+func (e ErrorReadFail) Code() byte {
+	return 0
+}
+
 type ErrorUnhandledResponse struct {
 	Mes protocol.Response
 }
@@ -29,4 +31,8 @@ func (e *ErrorUnhandledResponse) Error() string {
 
 func (e *ErrorUnhandledResponse) New() interface{} {
 	return &ErrorUnhandledResponse{}
+}
+
+func (e ErrorUnhandledResponse) Code() byte {
+	return 0
 }

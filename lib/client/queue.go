@@ -103,7 +103,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 			}
 
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -156,7 +156,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 				return
 			}
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -214,7 +214,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 
 			log.Printf("TMClient: Queue[%d]: tasks resubscribing parentUUID=%s ...\n", q.id, parentUUID)
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -267,7 +267,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 				return
 			}
 		}
-	})
+	}).Go()
 
 	return ch
 }

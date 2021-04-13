@@ -111,7 +111,7 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 				return
 			}
 		}
-	})
+	}).Go()
 
 	return ch
 }
@@ -233,7 +233,7 @@ func (c *client) connWorker(ctx context.Context) {
 
 		log.Printf("TMClient: connected to %s\n", u.String())
 
-		protCtl := controller.New(mes.Codes, conn)
+		protCtl := controller.New(mes.Messages, conn)
 
 		ctx.Child("conn.read", c.connRead).
 			ValueSet("protocol.ctl", protCtl).Go()

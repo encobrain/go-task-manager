@@ -12,6 +12,10 @@ type CS_QueueTaskNew_rq struct {
 	Content    []byte
 }
 
+func (CS_QueueTaskNew_rq) Code() byte {
+	return 'b'
+}
+
 func (CS_QueueTaskNew_rq) New() interface{} {
 	return &CS_QueueTaskNew_rq{}
 }
@@ -20,6 +24,10 @@ type SC_QueueTaskNew_rs struct {
 	RsId
 	UUID    string // if empty - queue id invalid
 	StateId uint64
+}
+
+func (SC_QueueTaskNew_rs) Code() byte {
+	return 'B'
 }
 
 func (SC_QueueTaskNew_rs) New() interface{} {
@@ -43,6 +51,10 @@ type CS_QueueTaskGet_rq struct {
 	UUID    string
 }
 
+func (CS_QueueTaskGet_rq) Code() byte {
+	return 'c'
+}
+
 func (CS_QueueTaskGet_rq) New() interface{} {
 	return &CS_QueueTaskGet_rq{}
 }
@@ -50,6 +62,10 @@ func (CS_QueueTaskGet_rq) New() interface{} {
 type SC_QueueTaskGet_rs struct {
 	RsId
 	Info *TaskInfo `json:",omitempty"` // if nil - task not exists
+}
+
+func (SC_QueueTaskGet_rs) Code() byte {
+	return 'C'
 }
 
 func (SC_QueueTaskGet_rs) New() interface{} {
@@ -64,6 +80,10 @@ type CS_QueueTasksSubscribe_rq struct {
 	ParentUUID string
 }
 
+func (CS_QueueTasksSubscribe_rq) Code() byte {
+	return 'e'
+}
+
 func (CS_QueueTasksSubscribe_rq) New() interface{} {
 	return &CS_QueueTasksSubscribe_rq{}
 }
@@ -73,6 +93,10 @@ type SC_QueueTasksSubscribe_rs struct {
 	SubscribeId *uint64 // if nil - queue not exists. Individual for each connection
 }
 
+func (SC_QueueTasksSubscribe_rs) Code() byte {
+	return 'E'
+}
+
 func (SC_QueueTasksSubscribe_rs) New() interface{} {
 	return &SC_QueueTasksSubscribe_rs{}
 }
@@ -80,6 +104,10 @@ func (SC_QueueTasksSubscribe_rs) New() interface{} {
 type SC_QueueSubscribeTask_ms struct {
 	SubscribeId uint64
 	Info        TaskInfo
+}
+
+func (SC_QueueSubscribeTask_ms) Code() byte {
+	return 'F'
 }
 
 func (SC_QueueSubscribeTask_ms) New() interface{} {
@@ -94,6 +122,10 @@ type CS_QueueTasksGet_rq struct {
 	ParentUUID string
 }
 
+func (CS_QueueTasksGet_rq) Code() byte {
+	return 'd'
+}
+
 func (CS_QueueTasksGet_rq) New() interface{} {
 	return &CS_QueueTasksGet_rq{}
 }
@@ -101,6 +133,10 @@ func (CS_QueueTasksGet_rq) New() interface{} {
 type SC_QueueTasksGet_rs struct {
 	RsId
 	Tasks []TaskInfo
+}
+
+func (SC_QueueTasksGet_rs) Code() byte {
+	return 'D'
 }
 
 func (SC_QueueTasksGet_rs) New() interface{} {
