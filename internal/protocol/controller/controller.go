@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/encobrain/go-task-manager/internal/protocol"
 	"github.com/gorilla/websocket"
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -80,6 +81,9 @@ func (c *controller) MessageSend(mes protocol.Message) (err error) {
 
 	c.connw_mu.Lock() //Fucking programmers: concurrent write to websocket connection. WTF?????
 	defer c.connw_mu.Unlock()
+
+	j, _ := json.Marshal(mes)
+	log.Printf("TMProtocol: incoming mes %T %s", mes, j)
 
 	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{mes.Code()}, bytes...))
 }

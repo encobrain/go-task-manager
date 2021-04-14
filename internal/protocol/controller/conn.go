@@ -5,20 +5,33 @@ import (
 	"fmt"
 	"github.com/encobrain/go-task-manager/internal/protocol"
 	"github.com/gorilla/websocket"
+	"log"
 )
 
 func (c *controller) connIncomingReq(req protocol.Request) {
 	defer func() { recover() }()
+
+	j, _ := json.Marshal(req)
+	log.Printf("TMProtocol: incoming mes %T %s", req, j)
+
 	c.incoming.reqs <- req
 }
 
 func (c *controller) connIncomingMes(mes protocol.Message) {
 	defer func() { recover() }()
+
+	j, _ := json.Marshal(mes)
+	log.Printf("TMProtocol: incoming mes %T %s", mes, j)
+
 	c.incoming.mess <- mes
 }
 
 func (c *controller) connIncomingRes(ch chan protocol.Response, res protocol.Response) {
 	defer func() { recover() }()
+
+	j, _ := json.Marshal(res)
+	log.Printf("TMProtocol: incoming mes %T %s", res, j)
+
 	ch <- res
 	close(ch)
 }
