@@ -53,7 +53,9 @@ func New(messages []protocol.Message, conn *websocket.Conn) Controller {
 }
 
 type controller struct {
-	conn    *websocket.Conn
+	conn     *websocket.Conn
+	connw_mu sync.Mutex
+
 	codeMes map[byte]protocol.Message
 
 	incoming struct {
@@ -75,6 +77,9 @@ func (c *controller) MessageSend(mes protocol.Message) (err error) {
 	if err != nil {
 		return
 	}
+
+	c.connw_mu.Lock() //Fucking programmers: concurrent write to websocket connection. WTF?????
+	defer c.connw_mu.Unlock()
 
 	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{mes.Code()}, bytes...))
 }
