@@ -229,7 +229,7 @@ func (q *queue) taskRemove(uuid string) (ok bool) {
 		}
 
 		if t.ID != 0 {
-			err := q.db.Delete(t.dbTask).Error
+			err := q.db.Unscoped().Delete(t.dbTask).Error
 
 			if err != nil {
 				panic(fmt.Errorf("remove task `%s` from db queue `%s` fail. %s", t.UUID, q.Name, err))
