@@ -55,5 +55,19 @@ func (m *manager) Get(id uint64) storage.Queue {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	return m.queue.byId[id]
+	q := m.queue.byId[id]
+
+	if q == nil {
+		qi := m.storage.QueueGet(id)
+
+		if qi == nil {
+			return nil
+		}
+
+		q = storage.NewQueue(m.storage, qi)
+		m.queue.byName[qi.Name] = q
+		m.queue.byId[qi.Id] = q
+	}
+
+	return q
 }
