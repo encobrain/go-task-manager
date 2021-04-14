@@ -83,7 +83,7 @@ func (c *controller) MessageSend(mes protocol.Message) (err error) {
 	defer c.connw_mu.Unlock()
 
 	j, _ := json.Marshal(mes)
-	log.Printf("TMProtocol: incoming mes %T %s", mes, j)
+	log.Printf("TMProtocol: sending %T %s", mes, j)
 
 	return c.conn.WriteMessage(websocket.TextMessage, append([]byte{mes.Code()}, bytes...))
 }

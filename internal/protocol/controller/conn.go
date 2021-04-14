@@ -12,7 +12,7 @@ func (c *controller) connIncomingReq(req protocol.Request) {
 	defer func() { recover() }()
 
 	j, _ := json.Marshal(req)
-	log.Printf("TMProtocol: incoming mes %T %s", req, j)
+	log.Printf("TMProtocol: incoming req %T %s", req, j)
 
 	c.incoming.reqs <- req
 }
@@ -30,7 +30,7 @@ func (c *controller) connIncomingRes(ch chan protocol.Response, res protocol.Res
 	defer func() { recover() }()
 
 	j, _ := json.Marshal(res)
-	log.Printf("TMProtocol: incoming mes %T %s", res, j)
+	log.Printf("TMProtocol: incoming res %T %s", res, j)
 
 	ch <- res
 	close(ch)
