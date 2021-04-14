@@ -130,7 +130,6 @@ func (s *Storage) QueueGetOrCreate(name string) *storage.QueueInfo {
 		}
 
 		q := &queue{dbQueue: dbq, db: s.db}
-		q.task.all = true
 		q.start()
 
 		s.cache.queueByName.Store(name, q)
