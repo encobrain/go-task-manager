@@ -292,6 +292,10 @@ func (c *client) connRead(ctx context.Context) {
 			ctx.Child("mes.process", c.connMesProcess).
 				ValueSet("mes", mes).Go()
 		case req := <-protCtl.RequestGet():
+			if req == nil {
+				return
+			}
+
 			panic(fmt.Errorf("unsupported request: %T", req))
 		}
 	}
