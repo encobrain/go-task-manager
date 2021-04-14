@@ -64,6 +64,12 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 }
 
 func (r *Router) Route(queue storage.Queue, task storage.Task) {
+	select {
+	case <-task.Canceled():
+		return
+	default:
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
