@@ -78,7 +78,6 @@ func (s *tmService) connServe(ctx context.Context) {
 			return
 		case mes, ok := <-protCtl.MessageGet():
 			if !ok {
-				log.Printf("Protocol finished work\n")
 				return
 			}
 
@@ -86,7 +85,6 @@ func (s *tmService) connServe(ctx context.Context) {
 				ValueSet("mes", mes).Go()
 		case req, ok := <-protCtl.RequestGet():
 			if !ok {
-				log.Printf("Protocol finished work\n")
 				return
 			}
 
