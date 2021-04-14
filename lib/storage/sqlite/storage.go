@@ -148,7 +148,7 @@ func (s *Storage) QueueGetOrCreate(name string) *storage.QueueInfo {
 	}
 }
 
-func (s *Storage) QueueGet(id uint64) *storage.QueueInfo {
+func (s *Storage) queueGet(id uint64) *queue {
 	iq, _ := s.cache.queueById.Load(id)
 
 	for iq == nil {
@@ -187,60 +187,68 @@ func (s *Storage) QueueGet(id uint64) *storage.QueueInfo {
 		break
 	}
 
-	q := iq.(*queue)
-
-	return &storage.QueueInfo{
-		Id:   uint64(q.ID),
-		Name: q.Name,
-	}
+	return iq.(*queue)
 }
 
-func (s *Storage) TaskNew(queueId uint64, parentUUID string, status string, content []byte) *storage.TaskInfo {
-	iq, _ := s.cache.queueById.Load(queueId)
+func (s *Storage) QueueGet(id uint64) (qi *storage.QueueInfo) {
+	q := s.queueGet(id)
 
-	if iq == nil {
-		return nil
+	if q != nil {
+		qi = &storage.QueueInfo{
+			Id:   uint64(q.ID),
+			Name: q.Name,
+		}
 	}
 
-	return iq.(*queue).taskNew(parentUUID, status, content)
+	return
 }
 
-func (s *Storage) TaskGet(queueId uint64, uuid string) *storage.TaskInfo {
-	iq, _ := s.cache.queueById.Load(queueId)
+func (s *Storage) TaskNew(queueId uint64, parentUUID string, status string, content []byte) (ti *storage.TaskInfo) {
+	q := s.queueGet(queueId)
 
-	if iq == nil {
-		return nil
+	if q != nil {
+		ti = q.taskNew(parentUUID, status, content)
 	}
 
-	return iq.(*queue).taskGetInfo(uuid)
+	return
 }
 
-func (s *Storage) TasksGet(queueId uint64) []*storage.TaskInfo {
-	iq, _ := s.cache.queueById.Load(queueId)
+func (s *Storage) TaskGet(queueId uint64, uuid string) (ti *storage.TaskInfo) {
+	q := s.queueGet(queueId)
 
-	if iq == nil {
-		return nil
+	if q != nil {
+		ti = q.taskGetInfo(uuid)
 	}
 
-	return iq.(*queue).tasksInfoGet()
+	return
+}
+
+func (s *Storage) TasksGet(queueId uint64) (ts []*storage.TaskInfo) {
+	q := s.queueGet(queueId)
+
+	if q != nil {
+		ts = q.tasksInfoGet()
+	}
+
+	return
 }
 
 func (s *Storage) TaskStatusSet(queueId uint64, uuid string, status string, content []byte) (ok bool) {
-	iq, _ := s.cache.queueById.Load(queueId)
+	q := s.queueGet(queueId)
 
-	if iq == nil {
-		return
+	if q != nil {
+		ok = q.taskStatusSet(uuid, status, content)
 	}
 
-	return iq.(*queue).taskStatusSet(uuid, status, content)
+	return
 }
 
 func (s *Storage) TaskRemove(queueId uint64, uuid string) (ok bool) {
-	iq, _ := s.cache.queueById.Load(queueId)
+	q := s.queueGet(queueId)
 
-	if iq == nil {
-		return
+	if q != nil {
+		ok = q.taskRemove(uuid)
 	}
 
-	return iq.(*queue).taskRemove(uuid)
+	return
 }
