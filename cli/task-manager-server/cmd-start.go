@@ -97,7 +97,7 @@ func (c CmdStart) startServer(ctx context.Context) {
 	upgrader := websocket.Upgrader{}
 
 	serveMux.HandleFunc(conf.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("New connection\n")
+		log.Printf("New connection from %s\n", r.RemoteAddr)
 
 		conn, err := upgrader.Upgrade(w, r, nil)
 
