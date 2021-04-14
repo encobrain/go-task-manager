@@ -164,9 +164,7 @@ func (q *queue) tasksInfoGet() (tasks []*storage.TaskInfo) {
 		panic(fmt.Errorf("get all tasks from `%s` queue fail. storage stopped", q.Name))
 	}
 
-	log.Printf("1111111111")
 	if !q.task.all {
-		log.Printf("2222222222")
 		dbts := make([]*dbTask, 0)
 
 		err := q.db.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
