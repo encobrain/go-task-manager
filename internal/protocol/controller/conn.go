@@ -9,29 +9,26 @@ import (
 )
 
 func (c *controller) connIncomingReq(req protocol.Request) {
-	defer func() { recover() }()
-
 	j, _ := json.Marshal(req)
 	log.Printf("TMProtocol<%s>: incoming req %T %s", c.conn.RemoteAddr(), req, j)
 
+	defer func() { recover() }()
 	c.incoming.reqs <- req
 }
 
 func (c *controller) connIncomingMes(mes protocol.Message) {
-	defer func() { recover() }()
-
 	j, _ := json.Marshal(mes)
 	log.Printf("TMProtocol<%s>: incoming mes %T %s", c.conn.RemoteAddr(), mes, j)
 
+	defer func() { recover() }()
 	c.incoming.mess <- mes
 }
 
 func (c *controller) connIncomingRes(ch chan protocol.Response, res protocol.Response) {
-	defer func() { recover() }()
-
 	j, _ := json.Marshal(res)
 	log.Printf("TMProtocol<%s>: incoming res %T %s", c.conn.RemoteAddr(), res, j)
 
+	defer func() { recover() }()
 	ch <- res
 	close(ch)
 }
@@ -110,12 +107,13 @@ func (c *controller) connStop() {
 	close(c.incoming.reqs)
 	close(c.finished)
 
-	c.res.list.Range(func(key, value interface{}) bool {
+	c.res.list.Range(func(key, value interface{}) (ok bool) {
+		ok = true
 		ch := value.(chan protocol.Response)
 
+		defer func() { recover() }()
 		close(ch)
-
-		return true
+		return
 	})
 
 	log.Printf("TMProtocol<%s>: process stopped", c.conn.RemoteAddr())

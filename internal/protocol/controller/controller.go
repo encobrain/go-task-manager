@@ -104,6 +104,7 @@ func (c *controller) RequestSend(req protocol.Request) (res <-chan protocol.Resp
 
 	if err != nil {
 		c.res.list.Delete(id)
+		defer func() { recover() }()
 		close(resCh)
 	}
 
