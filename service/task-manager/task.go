@@ -23,6 +23,8 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 
 	queue := queueGetById(ctx, req.QueueId)
 
+	var processCtx context.Context
+
 	if queue != nil {
 		task := queue.TaskGet(req.UUID)
 
@@ -30,10 +32,10 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 			id := tsss.new()
 			res.SubscribeId = &id
 
-			ctx.Child("task.subscribe.process", s.taskStatusSubscribeProcess).
+			processCtx = ctx.Child("task.subscribe.process", s.taskStatusSubscribeProcess).
 				ValueSet("task.uuid", req.UUID).
 				ValueSet("subscribe.id", id).
-				ValueSet("queue", queue).Go()
+				ValueSet("queue", queue)
 		}
 	}
 
@@ -41,6 +43,10 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 
 	if err != nil {
 		log.Printf("Send response fail. %s\n", err)
+	}
+
+	if processCtx != nil {
+		processCtx.Go()
 	}
 }
 
