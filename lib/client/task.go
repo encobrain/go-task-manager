@@ -111,8 +111,6 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-t.canceled:
-				return
 			case protCtl = <-t.protocol.ctl:
 			}
 
