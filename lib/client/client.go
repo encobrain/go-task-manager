@@ -313,9 +313,9 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	t.parentUUID = parentUUID
 	t.status = status
 
-	it, _ := c.task.list.LoadOrStore(stateId, t)
+	c.task.list.Store(stateId, t)
 
-	return it.(*task)
+	return t
 }
 
 func (c *client) queueTasksSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
