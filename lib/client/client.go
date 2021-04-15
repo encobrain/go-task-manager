@@ -81,10 +81,15 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 		}
 
 		for {
-			protCtl := <-c.protocol.ctl
+			var protCtl controller.Controller
 
-			if protCtl == nil {
+			select {
+			case <-ctx.Done():
 				return
+			case protCtl = <-c.protocol.ctl:
+				if protCtl == nil {
+					return
+				}
 			}
 
 			res, err := protCtl.RequestSend(&mes.CS_ClientGetQueue_rq{

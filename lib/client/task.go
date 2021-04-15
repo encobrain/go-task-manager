@@ -109,6 +109,8 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 			var protCtl controller.Controller
 
 			select {
+			case <-ctx.Done():
+				return
 			case <-t.canceled:
 				return
 			case protCtl = <-t.protocol.ctl:
@@ -130,7 +132,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case resm := <-res:
 				if resm == nil {
@@ -148,7 +150,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-protCtl.Finished():
 			}
@@ -173,6 +175,8 @@ func (t *task) Content() (content <-chan []byte) {
 			var protCtl controller.Controller
 
 			select {
+			case <-ctx.Done():
+				return
 			case <-t.canceled:
 				return
 			case protCtl = <-t.protocol.ctl:
@@ -193,7 +197,7 @@ func (t *task) Content() (content <-chan []byte) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-t.canceled:
 				return
@@ -210,7 +214,11 @@ func (t *task) Content() (content <-chan []byte) {
 
 				log.Printf("TMClient: Task[%s]: got content\n", t.uuid)
 
-				ch <- *rs.Content
+				select {
+				case <-ctx.Done():
+				case ch <- *rs.Content:
+				}
+
 				return
 			}
 
@@ -232,6 +240,8 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 			var protCtl controller.Controller
 
 			select {
+			case <-ctx.Done():
+				return
 			case <-t.canceled:
 				return
 			case protCtl = <-t.protocol.ctl:
@@ -255,7 +265,7 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-t.canceled:
 				return
@@ -276,7 +286,11 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 				t.status = status
 				t.stateId = *rs.StateId
 
-				ch <- true
+				select {
+				case <-ctx.Done():
+				case ch <- true:
+				}
+
 				return
 			}
 
@@ -298,6 +312,8 @@ func (t *task) Remove() (done <-chan bool) {
 			var protCtl controller.Controller
 
 			select {
+			case <-ctx.Done():
+				return
 			case <-t.canceled:
 				return
 			case protCtl = <-t.protocol.ctl:
@@ -319,7 +335,7 @@ func (t *task) Remove() (done <-chan bool) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-t.canceled:
 				return
@@ -337,7 +353,11 @@ func (t *task) Remove() (done <-chan bool) {
 
 				log.Printf("TMClient: Task[%s]: remove done\n", t.uuid)
 
-				ch <- true
+				select {
+				case <-ctx.Done():
+				case ch <- true:
+				}
+
 				return
 			}
 
@@ -370,6 +390,8 @@ func (t *task) Reject() (done <-chan struct{}) {
 			var protCtl controller.Controller
 
 			select {
+			case <-ctx.Done():
+				return
 			case <-t.canceled:
 				return
 			case protCtl = <-t.protocol.ctl:
@@ -390,18 +412,16 @@ func (t *task) Reject() (done <-chan struct{}) {
 			}
 
 			select {
-			case <-t.ctx.Done():
+			case <-ctx.Done():
 				return
 			case <-t.canceled:
 				return
 			case resm := <-res:
-				if resm == nil {
-					continue
+				if resm != nil {
+					log.Printf("TMClient: Task[%s]: reject done\n", t.uuid)
+
+					return
 				}
-
-				log.Printf("TMClient: Task[%s]: reject done\n", t.uuid)
-
-				return
 			}
 
 		}

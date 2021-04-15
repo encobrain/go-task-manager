@@ -61,11 +61,16 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 		log.Printf("TMClient: Queue[%d]: creating new task: parentUUID=%s status=%s ...\n", q.id, parentUUID, status)
 
 		for {
-			protCtl := <-q.protocol.ctl
+			var protCtl controller.Controller
 
-			if protCtl == nil {
-				log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+			select {
+			case <-ctx.Done():
 				return
+			case protCtl = <-q.protocol.ctl:
+				if protCtl == nil {
+					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					return
+				}
 			}
 
 			res, err := protCtl.RequestSend(&mes.CS_QueueTaskNew_rq{
@@ -98,7 +103,11 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 
 				t := q.tasks.new(q.id, rs.StateId, rs.UUID, parentUUID, status)
 
-				ch <- t
+				select {
+				case <-ctx.Done():
+				case ch <- t:
+				}
+
 				return
 			}
 
@@ -117,11 +126,16 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 		log.Printf("TMClient: Queue[%d]: getting task UUID=%s ...\n", q.id, uuid)
 
 		for {
-			protCtl := <-q.protocol.ctl
+			var protCtl controller.Controller
 
-			if protCtl == nil {
-				log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+			select {
+			case <-ctx.Done():
 				return
+			case protCtl = <-q.protocol.ctl:
+				if protCtl == nil {
+					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					return
+				}
 			}
 
 			res, err := protCtl.RequestSend(&mes.CS_QueueTaskGet_rq{
@@ -152,7 +166,11 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 
 				t := q.tasks.new(q.id, rs.Info.StateId, rs.Info.UUID, rs.Info.ParentUUID, rs.Info.Status)
 
-				ch <- t
+				select {
+				case <-ctx.Done():
+				case ch <- t:
+				}
+
 				return
 			}
 		}
@@ -168,12 +186,17 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 		log.Printf("TMClient: Queue[%d]: tasks subscribing parentUUID=%s ...\n", q.id, parentUUID)
 
 		for {
-			protCtl := <-q.protocol.ctl
+			var protCtl controller.Controller
 
-			if protCtl == nil {
-				log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
-				close(ch)
+			select {
+			case <-ctx.Done():
 				return
+			case protCtl = <-q.protocol.ctl:
+				if protCtl == nil {
+					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					close(ch)
+					return
+				}
 			}
 
 			res, err := protCtl.RequestSend(&mes.CS_QueueTasksSubscribe_rq{
@@ -187,7 +210,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 			}
 
 			select {
-			case <-q.ctx.Done():
+			case <-ctx.Done():
 				close(ch)
 				return
 			case resm := <-res:
@@ -228,11 +251,16 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 		log.Printf("TMClient: Queue[%d]: getting tasks ParentUUID=%s ...\n", q.id, parentUUID)
 
 		for {
-			protCtl := <-q.protocol.ctl
+			var protCtl controller.Controller
 
-			if protCtl == nil {
-				log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+			select {
+			case <-ctx.Done():
 				return
+			case protCtl = <-q.protocol.ctl:
+				if protCtl == nil {
+					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					return
+				}
 			}
 
 			res, err := protCtl.RequestSend(&mes.CS_QueueTasksGet_rq{
@@ -246,7 +274,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 			}
 
 			select {
-			case <-q.ctx.Done():
+			case <-ctx.Done():
 				return
 			case resm := <-res:
 				if resm == nil {
@@ -263,7 +291,11 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 					tasks = append(tasks, q.tasks.new(q.id, i.StateId, i.UUID, i.ParentUUID, i.Status))
 				}
 
-				ch <- tasks
+				select {
+				case <-ctx.Done():
+				case ch <- tasks:
+				}
+
 				return
 			}
 		}
