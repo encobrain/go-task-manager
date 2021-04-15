@@ -257,7 +257,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 
 				log.Printf("TMClient: Queue[%d]: got tasks parentUUID=%s count=%d\n", q.id, parentUUID, len(rs.Tasks))
 
-				var tasks []Task
+				tasks := make([]Task, len(rs.Tasks))
 
 				for _, i := range rs.Tasks {
 					tasks = append(tasks, q.tasks.new(q.id, i.StateId, i.UUID, i.ParentUUID, i.Status))
