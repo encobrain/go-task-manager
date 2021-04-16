@@ -330,10 +330,9 @@ func (c *client) queueTasksSubscribe(subscribeId uint64, queueId uint64, ch chan
 func (c *client) taskStatusSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
 	si := &subInfo{queueId, ch}
 	sii, _ := c.task.statusSubscribe.LoadOrStore(subscribeId, si)
+	c.task.statusSubscribe.Store(subscribeId, si)
 
-	switch t := sii.(type) {
-	case chan struct{}:
-		c.task.statusSubscribe.Store(subscribeId, si)
+	if t, ok := sii.(chan struct{}); ok {
 		close(t)
 	}
 }
