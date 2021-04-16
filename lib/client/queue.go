@@ -58,7 +58,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 	q.ctx.Child("queue.task.new", func(ctx context.Context) {
 		defer close(ch)
 
-		log.Printf("TMClient: Queue[%d]: creating new task: parentUUID=%s status=%s ...\n", q.id, parentUUID, status)
+		log.Printf("TMClient: Queue[%s]: creating new task: parentUUID=%s status=%s ...\n", q.name, parentUUID, status)
 
 		for {
 			var protCtl controller.Controller
@@ -68,7 +68,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 				return
 			case protCtl = <-q.protocol.ctl:
 				if protCtl == nil {
-					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					log.Printf("TMClient: Queue[%s]: client stopped\n", q.name)
 					return
 				}
 			}
@@ -81,7 +81,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 			})
 
 			if err != nil {
-				log.Printf("TMClient: Queue[%d]: send request fail. %s\n", q.id, err)
+				log.Printf("TMClient: Queue[%s]: send request fail. %s\n", q.name, err)
 				continue
 			}
 
@@ -99,7 +99,7 @@ func (q *queue) TaskNew(parentUUID string, status string, content []byte) (task 
 					panic(fmt.Errorf("create task fail. queueId[%d] invalid", q.id))
 				}
 
-				log.Printf("TMClient: Queue[%d]: created task UUID=%s\n", q.id, rs.UUID)
+				log.Printf("TMClient: Queue[%s]: created task UUID=%s\n", q.name, rs.UUID)
 
 				t := q.tasks.new(q.id, rs.StateId, rs.UUID, parentUUID, status)
 
@@ -123,7 +123,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 	q.ctx.Child("queue.task.get", func(ctx context.Context) {
 		defer close(ch)
 
-		log.Printf("TMClient: Queue[%d]: getting task UUID=%s ...\n", q.id, uuid)
+		log.Printf("TMClient: Queue[%s]: getting task UUID=%s ...\n", q.name, uuid)
 
 		for {
 			var protCtl controller.Controller
@@ -133,7 +133,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 				return
 			case protCtl = <-q.protocol.ctl:
 				if protCtl == nil {
-					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					log.Printf("TMClient: Queue[%s]: client stopped\n", q.name)
 					return
 				}
 			}
@@ -144,7 +144,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 			})
 
 			if err != nil {
-				log.Printf("TMClient: Queue[%d]: send request fail. %s\n", q.id, err)
+				log.Printf("TMClient: Queue[%s]: send request fail. %s\n", q.name, err)
 				continue
 			}
 
@@ -162,7 +162,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 					return
 				}
 
-				log.Printf("TMClient: Queue[%d]: got task UUID=%s\n", q.id, rs.Info.UUID)
+				log.Printf("TMClient: Queue[%s]: got task UUID=%s\n", q.name, rs.Info.UUID)
 
 				t := q.tasks.new(q.id, rs.Info.StateId, rs.Info.UUID, rs.Info.ParentUUID, rs.Info.Status)
 
@@ -183,7 +183,9 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 	ch := make(chan Task)
 
 	q.ctx.Child("queue.tasks.subscribe", func(ctx context.Context) {
-		log.Printf("TMClient: Queue[%d]: tasks subscribing parentUUID=%s ...\n", q.id, parentUUID)
+		defer close(ch)
+
+		log.Printf("TMClient: Queue[%s]: tasks subscribing parentUUID=%s ...\n", q.name, parentUUID)
 
 		for {
 			var protCtl controller.Controller
@@ -193,8 +195,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 				return
 			case protCtl = <-q.protocol.ctl:
 				if protCtl == nil {
-					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
-					close(ch)
+					log.Printf("TMClient: Queue[%s]: client stopped\n", q.name)
 					return
 				}
 			}
@@ -205,13 +206,12 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 			})
 
 			if err != nil {
-				log.Printf("TMClient: Queue[%d]: send request fail. %s\n", q.id, err)
+				log.Printf("TMClient: Queue[%s]: send request fail. %s\n", q.name, err)
 				continue
 			}
 
 			select {
 			case <-ctx.Done():
-				close(ch)
 				return
 			case resm := <-res:
 				if resm == nil {
@@ -224,7 +224,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 					panic(fmt.Errorf("tasks subscribe fail. queueId[%d] invalid", q.id))
 				}
 
-				log.Printf("TMClient: Queue[%d]: subscribe done. subscribeId=%d\n", q.id, *rs.SubscribeId)
+				log.Printf("TMClient: Queue[%s]: subscribe done. subscribeId=%d\n", q.name, *rs.SubscribeId)
 
 				q.tasks.subscribe(*rs.SubscribeId, q.id, ch)
 			}
@@ -235,7 +235,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 			case <-protCtl.Finished():
 			}
 
-			log.Printf("TMClient: Queue[%d]: tasks resubscribing parentUUID=%s ...\n", q.id, parentUUID)
+			log.Printf("TMClient: Queue[%s]: tasks resubscribing parentUUID=%s ...\n", q.name, parentUUID)
 		}
 	}).Go()
 
@@ -248,7 +248,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 	q.ctx.Child("queue.tasks.get", func(ctx context.Context) {
 		defer close(ch)
 
-		log.Printf("TMClient: Queue[%d]: getting tasks ParentUUID=%s ...\n", q.id, parentUUID)
+		log.Printf("TMClient: Queue[%s]: getting tasks ParentUUID=%s ...\n", q.name, parentUUID)
 
 		for {
 			var protCtl controller.Controller
@@ -258,7 +258,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 				return
 			case protCtl = <-q.protocol.ctl:
 				if protCtl == nil {
-					log.Printf("TMClient: Queue[%d]: client stopped\n", q.id)
+					log.Printf("TMClient: Queue[%s]: client stopped\n", q.name)
 					return
 				}
 			}
@@ -269,7 +269,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 			})
 
 			if err != nil {
-				log.Printf("TMClient: Queue[%d]: send request fail. %s\n", q.id, err)
+				log.Printf("TMClient: Queue[%s]: send request fail. %s\n", q.name, err)
 				continue
 			}
 
@@ -283,7 +283,7 @@ func (q *queue) TasksGet(parentUUID string) (tasks <-chan []Task) {
 
 				rs := resm.(*mes.SC_QueueTasksGet_rs)
 
-				log.Printf("TMClient: Queue[%d]: got tasks parentUUID=%s count=%d\n", q.id, parentUUID, len(rs.Tasks))
+				log.Printf("TMClient: Queue[%s]: got tasks parentUUID=%s count=%d\n", q.name, parentUUID, len(rs.Tasks))
 
 				tasks := make([]Task, 0, len(rs.Tasks))
 
