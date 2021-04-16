@@ -98,11 +98,11 @@ func (t *task) Status() string {
 }
 
 func (t *task) StatusSubscribe() (status <-chan Task) {
-	ch := make(chan Task, 1)
+	ch := make(chan Task)
 
 	t.ctx.Child("task.statusSubscribe", func(ctx context.Context) {
 		defer close(ch)
-		chc := make(chan Task, 10)
+		chc := make(chan Task)
 
 		log.Printf("TMClient: Task[%s]: subscribing status...", t.uuid)
 		defer log.Printf("TMClient: Task[%s] status subscribe stopped", t.uuid)
