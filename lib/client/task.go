@@ -102,9 +102,11 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 
 	t.ctx.Child("task.statusSubscribe", func(ctx context.Context) {
 		defer close(ch)
+		chc := make(chan Task, 1)
 
 		log.Printf("TMClient: Task[%s]: subscribing status...", t.uuid)
 
+	subscribe:
 		for {
 			var protCtl controller.Controller
 
@@ -140,20 +142,33 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 				rs := resm.(*mes.SC_TaskStatusSubscribe_rs)
 
 				if rs.SubscribeId == nil {
-					ch <- nil
 					return
 				}
 
-				t.statusSubscribe.do(*rs.SubscribeId, t.queueId, ch)
+				t.statusSubscribe.do(*rs.SubscribeId, t.queueId, chc)
 			}
 
-			select {
-			case <-ctx.Done():
-				return
-			case <-protCtl.Finished():
-			}
+			for {
+				var st Task
 
-			log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
+				select {
+				case <-ctx.Done():
+					return
+				case st = <-chc:
+					if st == nil {
+						return
+					}
+				case <-protCtl.Finished():
+					log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
+					continue subscribe
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- st:
+				}
+			}
 		}
 
 	}).Go()
