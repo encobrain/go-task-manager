@@ -308,6 +308,16 @@ func (c *client) connRead(ctx context.Context) {
 
 func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID string, status string) *task {
 	t := taskNew()
+
+	it, _ := c.task.list.LoadOrStore(stateId, t)
+
+	switch ot := it.(type) {
+	case *mes.SC_TaskCancel_ms:
+		t.cancel(fmt.Errorf(ot.Reason))
+	case *task:
+		t = ot
+	}
+
 	t.ctx = c.ctx.worker
 	t.protocol.ctl = c.protocol.ctl
 	t.statusSubscribe.do = c.taskStatusSubscribe
@@ -317,8 +327,6 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	t.uuid = uuid
 	t.parentUUID = parentUUID
 	t.status = status
-
-	c.task.list.Store(stateId, t)
 
 	return t
 }
@@ -373,10 +381,9 @@ func (c *client) connMesProcess(ctx context.Context) {
 		}
 
 	case *mes.SC_TaskCancel_ms:
-		it, ok := c.task.list.Load(m.StateId)
+		it, ok := c.task.list.LoadOrStore(m.StateId, m)
 
 		if !ok {
-			log.Printf("TMClient: not found task for cancel. stateId=%d\n", m.StateId)
 			return
 		}
 
