@@ -407,10 +407,14 @@ func (c *client) connMesProcess(ctx context.Context) {
 			t = c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 		}
 
+		log.Printf("TMClient:Subscribe %d Sending task status %+v", m.SubscribeId, t)
+
 		select {
 		case <-ctx.Done():
 			return
 		case si.ch <- t:
 		}
+
+		log.Printf("TMClient: Subscribe %d Send done", m.SubscribeId)
 	}
 }
