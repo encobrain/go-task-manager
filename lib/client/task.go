@@ -132,8 +132,6 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 				continue
 			}
 
-			var subId uint64
-
 			select {
 			case <-ctx.Done():
 				return
@@ -148,7 +146,6 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 					return
 				}
 
-				subId = *rs.SubscribeId
 				t.statusSubscribe.do(*rs.SubscribeId, t.queueId, chc)
 			}
 
@@ -159,12 +156,11 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 				case <-ctx.Done():
 					return
 				case <-protCtl.Finished():
-					log.Printf("TMClient: Task[%s]: subId %d status resubscribing...\n", t.uuid, subId)
+					log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
 					continue subscribe
 				case st = <-chc:
-					log.Printf("TMClient: Subid %d recevied status %+v\n", subId, st)
-
 					if st == nil {
+						log.Printf("TMClient: Task[%s]: task not exists\n", t.uuid)
 						return
 					}
 				}
@@ -173,7 +169,6 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 				case <-ctx.Done():
 					return
 				case ch <- st:
-					log.Printf("TMClient: Subid %d Sent status\n", subId)
 				}
 			}
 		}

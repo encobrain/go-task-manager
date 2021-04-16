@@ -400,20 +400,16 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 		si := sii.(*subInfo)
 
-		var t *task
+		var t Task // FUCKING GO!!!!! nil obj != nil interface
 
 		if m.Info != nil {
 			t = c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 		}
-
-		log.Printf("TMClient: Subscribe %d Sending task status %+v\n", m.SubscribeId, m.Info)
 
 		select {
 		case <-ctx.Done():
 			return
 		case si.ch <- t:
 		}
-
-		log.Printf("TMClient: Subscribe %d Send done\n", m.SubscribeId)
 	}
 }
