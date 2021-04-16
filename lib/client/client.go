@@ -53,13 +53,15 @@ type client struct {
 	}
 
 	queue struct {
-		list           sync.Map // map[name]*queue
-		tasksSubscribe sync.Map // map[subscribeId]*subInfo
+		mu             sync.Mutex
+		list           map[string]*queue
+		tasksSubscribe map[uint64]*subInfo
 	}
 
 	task struct {
-		list            sync.Map // map[stateId]*task
-		statusSubscribe sync.Map // map[subscribeId]*subInfo
+		mu              sync.Mutex
+		list            map[uint64]interface{} // map[stateId]*task|*SC_TaskCancel_ms
+		statusSubscribe map[uint64]interface{} // *subInfo|chan *subInfo
 	}
 
 	protocol struct {
@@ -73,10 +75,12 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 	c.ctx.glob.Child("queue.get", func(ctx context.Context) {
 		defer close(ch)
 
-		queue, ok := c.queue.list.Load(name)
+		c.queue.mu.Lock()
+		queue := c.queue.list[name]
+		c.queue.mu.Unlock()
 
-		if ok {
-			ch <- queue.(Queue)
+		if queue != nil {
+			ch <- queue
 			return
 		}
 
@@ -123,7 +127,16 @@ func (c *client) GetQueue(name string) (queue <-chan Queue) {
 }
 
 func (c *client) queueNew(name string, id uint64) *queue {
-	q := newQueue()
+	c.queue.mu.Lock()
+	defer c.queue.mu.Unlock()
+
+	q := c.queue.list[name]
+
+	if q != nil {
+		return q
+	}
+
+	q = newQueue()
 	q.id = id
 	q.name = name
 	q.tasks.new = c.taskNew
@@ -131,9 +144,9 @@ func (c *client) queueNew(name string, id uint64) *queue {
 	q.protocol.ctl = c.protocol.ctl
 	q.ctx = c.ctx.worker
 
-	iq, _ := c.queue.list.LoadOrStore(name, q)
+	c.queue.list[name] = q
 
-	return iq.(*queue)
+	return q
 }
 
 func (c *client) Start() {
@@ -260,22 +273,25 @@ func (c *client) connWorker(ctx context.Context) {
 }
 
 func (c *client) connDisconnected() {
-	c.task.list.Range(func(stateId, itask interface{}) bool {
-		task := itask.(*task)
-		task.cancel(fmt.Errorf("client disconnected"))
-		c.task.list.Delete(stateId)
-		return true
-	})
+	c.task.mu.Lock()
+	defer c.task.mu.Unlock()
 
-	c.task.statusSubscribe.Range(func(subId, _ interface{}) bool {
-		c.task.statusSubscribe.Delete(subId)
-		return true
-	})
+	for _, itask := range c.task.list {
+		t, ok := itask.(*task)
 
-	c.queue.tasksSubscribe.Range(func(subId, _ interface{}) bool {
-		c.queue.tasksSubscribe.Delete(subId)
-		return true
-	})
+		if ok {
+			t.cancel(fmt.Errorf("client disconnected"))
+		}
+	}
+
+	c.task.list = map[uint64]interface{}{}
+
+	c.task.statusSubscribe = map[uint64]interface{}{}
+
+	c.queue.mu.Lock()
+	defer c.queue.mu.Unlock()
+
+	c.queue.tasksSubscribe = map[uint64]*subInfo{}
 }
 
 // ctx should contain vars:
@@ -307,15 +323,18 @@ func (c *client) connRead(ctx context.Context) {
 }
 
 func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID string, status string) *task {
+	c.task.mu.Lock()
+	defer c.task.mu.Unlock()
+
 	t := taskNew()
 
-	it, _ := c.task.list.LoadOrStore(stateId, t)
+	it := c.task.list[stateId]
 
 	switch ot := it.(type) {
 	case *mes.SC_TaskCancel_ms:
 		t.cancel(fmt.Errorf(ot.Reason))
 	case *task:
-		t = ot
+		ot.cancel(fmt.Errorf("invalid state"))
 	}
 
 	t.ctx = c.ctx.worker
@@ -328,21 +347,38 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	t.parentUUID = parentUUID
 	t.status = status
 
+	c.task.list[stateId] = t
+
 	return t
 }
 
 func (c *client) queueTasksSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
-	c.queue.tasksSubscribe.Store(subscribeId, &subInfo{queueId, ch})
+	c.queue.mu.Lock()
+	defer c.queue.mu.Unlock()
+
+	c.queue.tasksSubscribe[subscribeId] = &subInfo{queueId, ch}
 }
 
-func (c *client) taskStatusSubscribe(subscribeId uint64, queueId uint64, ch chan Task) {
-	si := &subInfo{queueId, ch}
-	sii, _ := c.task.statusSubscribe.LoadOrStore(subscribeId, si)
-	c.task.statusSubscribe.Store(subscribeId, si)
+func (c *client) taskStatusSubscribe(subscribeId uint64, queueId uint64) (ch chan Task) {
+	c.task.mu.Lock()
+	defer c.task.mu.Unlock()
 
-	if t, ok := sii.(chan struct{}); ok {
-		close(t)
+	sii := c.task.statusSubscribe[subscribeId]
+
+	switch i := sii.(type) {
+	case chan *subInfo:
+		si := &subInfo{queueId, make(chan Task)}
+		c.task.statusSubscribe[subscribeId] = si
+		i <- si
+		return si.ch
+	case *subInfo:
+		return i.ch
 	}
+
+	si := &subInfo{queueId, make(chan Task)}
+	c.task.statusSubscribe[subscribeId] = si
+
+	return si.ch
 }
 
 // ctx should contain vars:
@@ -361,15 +397,16 @@ func (c *client) connMesProcess(ctx context.Context) {
 		log.Printf("TMClient: Unhandled response. Id=%d", m.Mes.GetResponseId())
 
 	case *mes.SC_QueueSubscribeTask_ms:
-		sii, ok := c.queue.tasksSubscribe.Load(m.SubscribeId)
+		c.queue.mu.Lock()
+		defer c.queue.mu.Unlock()
+
+		si, ok := c.queue.tasksSubscribe[m.SubscribeId]
 
 		if !ok {
 			log.Printf("TMClient: not found tasks subscribe. subscribeId=%d. Task rejected\n", m.SubscribeId)
 			c.taskNew(0, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status).Reject()
 			return
 		}
-
-		si := sii.(*subInfo)
 
 		t := c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 
@@ -381,28 +418,42 @@ func (c *client) connMesProcess(ctx context.Context) {
 		}
 
 	case *mes.SC_TaskCancel_ms:
-		it, ok := c.task.list.LoadOrStore(m.StateId, m)
+		c.task.mu.Lock()
+		defer c.task.mu.Unlock()
 
-		if !ok {
+		it, _ := c.task.list[m.StateId]
+
+		if it == nil {
+			c.task.list[m.StateId] = m
 			return
 		}
 
 		it.(*task).cancel(fmt.Errorf(m.Reason))
 
 	case *mes.SC_TaskStatus_ms:
-		sii, ok := c.task.statusSubscribe.LoadOrStore(m.SubscribeId, make(chan struct{}))
+		c.task.mu.Lock()
 
-		if !ok {
+		sii := c.task.statusSubscribe[m.SubscribeId]
+
+		if sii == nil {
+			ch := make(chan *subInfo)
+
+			c.task.statusSubscribe[m.SubscribeId] = ch
+			c.task.mu.Unlock()
+
 			log.Printf("TMClient: not found task status subscribe. subscribeId=%d. Waiting subscribe done...\n", m.SubscribeId)
 
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(time.Second):
-				panic(fmt.Errorf("task status subscribeId=%d not found", m.SubscribeId))
-			case <-sii.(chan struct{}):
-				sii, _ = c.task.statusSubscribe.Load(m.SubscribeId)
+			case sii = <-ch:
+				if sii == nil {
+					return
+				}
 			}
+
+		} else {
+			c.task.mu.Unlock()
 		}
 
 		si := sii.(*subInfo)

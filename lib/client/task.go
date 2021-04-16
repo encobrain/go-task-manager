@@ -58,7 +58,7 @@ type task struct {
 	}
 
 	statusSubscribe struct {
-		do func(subscribeId uint64, queueId uint64, ch chan Task)
+		do func(subscribeId uint64, queueId uint64) (ch chan Task)
 	}
 
 	queueId    uint64
@@ -82,6 +82,7 @@ func (t *task) cancel(reason error) {
 
 	t.err = reason
 
+	defer func() { recover() }()
 	close(t.canceled)
 }
 
@@ -102,10 +103,11 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 
 	t.ctx.Child("task.statusSubscribe", func(ctx context.Context) {
 		defer close(ch)
-		chc := make(chan Task)
 
 		log.Printf("TMClient: Task[%s]: subscribing status...", t.uuid)
 		defer log.Printf("TMClient: Task[%s] status subscribe stopped\n", t.uuid)
+
+		var stch chan Task
 
 	subscribe:
 		for {
@@ -146,7 +148,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 					return
 				}
 
-				t.statusSubscribe.do(*rs.SubscribeId, t.queueId, chc)
+				stch = t.statusSubscribe.do(*rs.SubscribeId, t.queueId)
 			}
 
 			for {
@@ -158,7 +160,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 				case <-protCtl.Finished():
 					log.Printf("TMClient: Task[%s]: status resubscribing...\n", t.uuid)
 					continue subscribe
-				case st = <-chc:
+				case st = <-stch:
 					if st == nil {
 						log.Printf("TMClient: Task[%s]: task not exists\n", t.uuid)
 						return
