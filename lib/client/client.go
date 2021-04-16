@@ -32,6 +32,10 @@ func NewClient(ctx context.Context, config *config.Client) ClientWithControl {
 	c := &client{conf: config}
 	c.ctx.glob = ctx
 	c.protocol.ctl = make(chan controller.Controller)
+	c.queue.list = map[string]*queue{}
+	c.queue.tasksSubscribe = map[uint64]*subInfo{}
+	c.task.list = map[uint64]interface{}{}
+	c.task.statusSubscribe = map[uint64]interface{}{}
 	close(c.protocol.ctl)
 
 	return c
