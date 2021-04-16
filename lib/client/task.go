@@ -105,7 +105,7 @@ func (t *task) StatusSubscribe() (status <-chan Task) {
 		chc := make(chan Task)
 
 		log.Printf("TMClient: Task[%s]: subscribing status...", t.uuid)
-		defer log.Printf("TMClient: Task[%s] status subscribe stopped", t.uuid)
+		defer log.Printf("TMClient: Task[%s] status subscribe stopped\n", t.uuid)
 
 	subscribe:
 		for {
