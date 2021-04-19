@@ -18,12 +18,13 @@ import (
 )
 
 type Start struct {
+	*Config
 	cli.CmdStart
 }
 
 func (c Start) Execute(args []string) (err error) {
-	Config.Init()
-	success, err := c.CmdStart.Execute(Config.Process.Run.PidPathfile)
+	c.Config.Init()
+	success, err := c.CmdStart.Execute(c.Config.Process.Run.PidPathfile)
 
 	if err != nil || !success {
 		return fmt.Errorf("execute start fail. %s", err)
@@ -72,11 +73,11 @@ func (c Start) panicHandler(ctx context.Context, panicErr interface{}) {
 func (c Start) start(ctx context.Context) {
 	ctx.PanicHandlerSet(c.panicHandler)
 
-	dbDrvMng := driver.NewManager(&Config.DbDriverManager)
-	dbDrv, err := dbDrvMng.Driver(Config.Storage.Db.DriverId)
+	dbDrvMng := driver.NewManager(&c.Config.DbDriverManager)
+	dbDrv, err := dbDrvMng.Driver(c.Config.Storage.Db.DriverId)
 
 	if err != nil {
-		panic(fmt.Errorf("get db driver `%s` fail. %s", Config.Storage.Db.DriverId, err))
+		panic(fmt.Errorf("get db driver `%s` fail. %s", c.Config.Storage.Db.DriverId, err))
 	}
 
 	serverCtx := ctx.Child("server", c.startServer).
@@ -104,7 +105,7 @@ func (c Start) startServer(ctx context.Context) {
 	serveMux := http.NewServeMux()
 	upgrader := websocket.Upgrader{}
 
-	serveMux.HandleFunc(Config.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
+	serveMux.HandleFunc(c.Config.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("New connection from %s\n", r.RemoteAddr)
 
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -129,7 +130,7 @@ func (c Start) startServer(ctx context.Context) {
 		}
 	})
 
-	addr := fmt.Sprintf("%s:%d", Config.Server.Listen.Ip, Config.Server.Listen.Port)
+	addr := fmt.Sprintf("%s:%d", c.Config.Server.Listen.Ip, c.Config.Server.Listen.Port)
 
 	server := http.Server{
 		Addr:    addr,

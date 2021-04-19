@@ -5,10 +5,11 @@ import (
 )
 
 type Stop struct {
+	*Config
 	cli.CmdStop
 }
 
 func (c Stop) Execute(args []string) error {
-	Config.Init()
-	return c.CmdStop.Execute(Config.Process.Run.PidPathfile)
+	c.Config.Init()
+	return c.CmdStop.Execute(c.Config.Process.Run.PidPathfile)
 }

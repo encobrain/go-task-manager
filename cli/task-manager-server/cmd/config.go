@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-type config struct {
+type Config struct {
 	Config          _config.Config  `group:"Config options" namespace:"config"`
 	Process         _config.Process `group:"Process options" namespace:"process"`
 	Server          _config.Server  `group:"Server options" namespace:"server"`
@@ -16,9 +16,7 @@ type config struct {
 	Storage         lib.Storage     `group:"Storage options" namespace:"storage"`
 }
 
-var Config = &config{}
-
-func (c *config) Init() {
+func (c *Config) Init() {
 	defer func() {
 		err := c.Config.CatchError(recover())
 

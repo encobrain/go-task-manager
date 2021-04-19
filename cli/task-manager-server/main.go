@@ -8,16 +8,17 @@ import (
 )
 
 func main() {
-	cli := cli.New(cmd.Config)
+	config := &cmd.Config{}
+	cli := cli.New(config)
 
-	err := cli.AddCommand(&cmd.Start{})
+	err := cli.AddCommand(&cmd.Start{Config: config})
 
 	if err != nil {
 		log.Printf("Add command start fail. %s", err)
 		os.Exit(1)
 	}
 
-	err = cli.AddCommand(&cmd.Stop{})
+	err = cli.AddCommand(&cmd.Stop{Config: config})
 
 	if err != nil {
 		log.Printf("Add command stop fail. %s", err)
