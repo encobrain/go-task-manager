@@ -145,9 +145,9 @@ func (s *storage) QueueGetOrCreate(name string) *QueueInfo {
 				tx.Rollback()
 				panic(fmt.Errorf("create queue `%s` fail. %s", name, err))
 			}
-
-			tx.Commit()
 		}
+
+		tx.Commit()
 
 		q := &queue{dbQueue: dbq, db: s.db}
 		q.start()
