@@ -9,6 +9,8 @@ drivers:
     auth:
       user: "postgres"
       pass: "aqw1346790"
+    extra:
+      sslEnabled: false
   storage:
     db:
       type: "sqlite"
