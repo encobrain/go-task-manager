@@ -439,6 +439,11 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 		sii := c.task.statusSubscribe[m.SubscribeId]
 
+		if ch, ok := sii.(chan *subInfo); ok {
+			close(ch)
+			sii = nil
+		}
+
 		if sii == nil {
 			ch := make(chan *subInfo)
 
@@ -455,7 +460,6 @@ func (c *client) connMesProcess(ctx context.Context) {
 					return
 				}
 			}
-
 		} else {
 			c.task.mu.Unlock()
 		}
