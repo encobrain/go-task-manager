@@ -114,17 +114,32 @@ func (q *queue) taskGet(uuid string) *task {
 			return nil
 		}
 
+		tx := q.db.Begin()
+
 		dbt := &dbTask{UUID: uuid}
 
-		err := q.db.Where(dbt).Take(dbt).Error
+		err := tx.Where(dbt).Take(dbt).Error
 
 		if err != nil {
+			tx.Rollback()
+
 			if err == gorm.ErrRecordNotFound {
 				return nil
 			}
 
 			panic(fmt.Errorf("get task `%s` from db fail. %s", uuid, err))
 		}
+
+		err = tx.Unscoped().Delete(dbt).Error
+
+		if err != nil {
+			tx.Rollback()
+			panic(fmt.Errorf("delete task `%s` from db fail. %s", uuid, err))
+		}
+
+		tx.Commit()
+
+		dbt.ID = 0
 
 		it = &task{
 			dbTask: dbt,
@@ -166,20 +181,36 @@ func (q *queue) tasksInfoGet() (tasks []*TaskInfo) {
 	if !q.task.all {
 		dbts := make([]*dbTask, 0)
 
-		err := q.db.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
+		tx := q.db.Begin()
+
+		err := tx.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
 
 		if err != nil {
+			tx.Rollback()
 			panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
 		}
 
+		err = tx.Unscoped().Delete(&dbTask{QueueID: q.ID}).Error
+
+		if err != nil {
+			tx.Rollback()
+			panic(fmt.Errorf("delete tasks from db queue `%s` fail. %s", q.Name, err))
+		}
+
+		tx.Commit()
+
 		for _, dbt := range dbts {
-			if _, ok := q.task.list.Load(dbt.UUID); !ok {
-				it := &task{
+			it, ok := q.task.list.Load(dbt.UUID)
+
+			if !ok {
+				it = &task{
 					dbTask: dbt,
 				}
 
 				q.task.list.Store(dbt.UUID, it)
 			}
+
+			it.(*task).ID = 0
 		}
 
 		q.task.all = true
