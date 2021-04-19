@@ -96,7 +96,7 @@ func (s *storage) Stop() {
 		return
 	}
 
-	log.Printf("SQLiteStorage: stopping...\n")
+	log.Printf("Storage: stopping...\n")
 
 	s.isStarted = false
 
@@ -108,7 +108,7 @@ func (s *storage) Stop() {
 	s.cache.queueByName = sync.Map{}
 	s.cache.queueById = sync.Map{}
 
-	log.Printf("SQLiteStorage: stopped\n")
+	log.Printf("Storage: stopped\n")
 }
 
 func (s *storage) QueueGetOrCreate(name string) *QueueInfo {

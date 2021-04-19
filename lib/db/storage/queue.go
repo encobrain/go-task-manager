@@ -35,21 +35,25 @@ func (q *queue) stop() {
 
 	q.isStarted = false
 
+	var dbts []*dbTask
+
 	q.task.list.Range(func(uuid, it interface{}) bool {
 		t := it.(*task)
 
-		if t.updated {
-			err := q.db.Save(t.dbTask).Error
-
-			if err != nil {
-				log.Printf("Queue[%s]: Save task `%s` with %v fail. %s", q.Name, t.UUID, t.dbTask, err)
-			}
-
-			t.updated = false
-		}
+		dbts = append(dbts, t.dbTask)
 
 		return true
 	})
+
+	if len(dbts) != 0 {
+		err := q.db.Save(dbts).Error
+
+		if err != nil {
+			log.Printf("Queue[%s]: Save tasks(%d) fail. %s\n%+v\n", q.Name, len(dbts), err, dbts)
+		}
+	} else {
+		log.Printf("Queue[%s]: NO TASKS\n", q.Name)
+	}
 
 	q.task.list = sync.Map{}
 	q.task.all = false
@@ -190,7 +194,7 @@ func (q *queue) tasksInfoGet() (tasks []*TaskInfo) {
 			panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
 		}
 
-		err = tx.Unscoped().Delete(&dbTask{QueueID: q.ID}).Error
+		err = tx.Unscoped().Where(&dbTask{QueueID: q.ID}).Delete(&dbTask{QueueID: q.ID}).Error
 
 		if err != nil {
 			tx.Rollback()
