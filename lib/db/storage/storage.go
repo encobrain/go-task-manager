@@ -128,19 +128,25 @@ func (s *storage) QueueGetOrCreate(name string) *QueueInfo {
 			break
 		}
 
+		tx := s.db.Begin()
+
 		dbq := &dbQueue{Name: name}
-		err := s.db.Where(dbq).Take(dbq).Error
+		err := tx.Where(dbq).Take(dbq).Error
 
 		if err != nil {
 			if err != gorm.ErrRecordNotFound {
+				tx.Rollback()
 				panic(fmt.Errorf("get queue `%s` from storage fail. %s", name, err))
 			}
 
-			err = s.db.Create(dbq).Error
+			err = tx.Create(dbq).Error
 
 			if err != nil {
+				tx.Rollback()
 				panic(fmt.Errorf("create queue `%s` fail. %s", name, err))
 			}
+
+			tx.Commit()
 		}
 
 		q := &queue{dbQueue: dbq, db: s.db}
