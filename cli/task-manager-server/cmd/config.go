@@ -9,11 +9,11 @@ import (
 )
 
 type Config struct {
-	Config          _config.Config  `group:"Config options" namespace:"config"`
-	Process         _config.Process `group:"Process options" namespace:"process"`
-	Server          _config.Server  `group:"Server options" namespace:"server"`
+	Config          _config.Config  `group:"Config options" namespace:"config" env-namespace:"CONFIG"`
+	Process         _config.Process `group:"Process options" namespace:"process" env-namespace:"PROCESS"`
+	Server          _config.Server  `group:"Server options" namespace:"server" env-namespace:"SERVER"`
 	DbDriverManager driver.Manager  `group:"DB driver manager options" namespace:"dbDriverManager"`
-	Storage         lib.Storage     `group:"Storage options" namespace:"storage"`
+	Storage         lib.Storage     `group:"Storage options" namespace:"storage" env-namespace:"STORAGE"`
 }
 
 func (c *Config) Init() {

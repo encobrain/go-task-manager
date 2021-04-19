@@ -10,7 +10,7 @@ import (
 )
 
 type Config struct {
-	Path string `long:"path"   env:"CONFIG_PATH"   description:"A path with configuration files"   default:"config-dev"`
+	Path string `long:"path"   env:"PATH"   description:"A path with configuration files"   default:"config-dev"`
 }
 
 type pathfiler interface {

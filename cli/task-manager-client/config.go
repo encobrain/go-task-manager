@@ -7,8 +7,8 @@ import (
 )
 
 type config struct {
-	Config  _config.Config  `group:"Config options" namespace:"config"`
-	Process _config.Process `group:"Process options" namespace:"process"`
+	Config  _config.Config  `group:"Config options" namespace:"config" env-namespace:"CONFIG"`
+	Process _config.Process `group:"Process options" namespace:"process" env-namespace:"PROCESS"`
 	Client  _config.Client  `group:"Client options" namespace:"client"`
 }
 
