@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -17,13 +17,13 @@ import (
 	"time"
 )
 
-type CmdStart struct {
+type Start struct {
 	cli.CmdStart
 }
 
-func (c CmdStart) Execute(args []string) (err error) {
-	conf.Init()
-	success, err := c.CmdStart.Execute(conf.Process.Run.PidPathfile)
+func (c Start) Execute(args []string) (err error) {
+	Config.Init()
+	success, err := c.CmdStart.Execute(Config.Process.Run.PidPathfile)
 
 	if err != nil || !success {
 		return fmt.Errorf("execute start fail. %s", err)
@@ -62,21 +62,21 @@ func (c CmdStart) Execute(args []string) (err error) {
 	}
 }
 
-func (c CmdStart) panicHandler(ctx context.Context, panicErr interface{}) {
+func (c Start) panicHandler(ctx context.Context, panicErr interface{}) {
 	log.Printf("Service panic. %s\n", panicErr)
 	debug.PrintStack()
 
 	ctx.Cancel(fmt.Errorf("service panic"))
 }
 
-func (c CmdStart) start(ctx context.Context) {
+func (c Start) start(ctx context.Context) {
 	ctx.PanicHandlerSet(c.panicHandler)
 
-	dbDrvMng := driver.NewManager(&conf.DbDriverManager)
-	dbDrv, err := dbDrvMng.Driver(conf.Storage.Db.DriverId)
+	dbDrvMng := driver.NewManager(&Config.DbDriverManager)
+	dbDrv, err := dbDrvMng.Driver(Config.Storage.Db.DriverId)
 
 	if err != nil {
-		panic(fmt.Errorf("get db driver `%s` fail. %s", conf.Storage.Db.DriverId, err))
+		panic(fmt.Errorf("get db driver `%s` fail. %s", Config.Storage.Db.DriverId, err))
 	}
 
 	serverCtx := ctx.Child("server", c.startServer).
@@ -97,14 +97,14 @@ func (c CmdStart) start(ctx context.Context) {
 	stor.Stop()
 }
 
-func (c CmdStart) startServer(ctx context.Context) {
+func (c Start) startServer(ctx context.Context) {
 	tmService := task_manager.New(ctx)
 	tmService.Start()
 
 	serveMux := http.NewServeMux()
 	upgrader := websocket.Upgrader{}
 
-	serveMux.HandleFunc(conf.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
+	serveMux.HandleFunc(Config.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("New connection from %s\n", r.RemoteAddr)
 
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -129,7 +129,7 @@ func (c CmdStart) startServer(ctx context.Context) {
 		}
 	})
 
-	addr := fmt.Sprintf("%s:%d", conf.Server.Listen.Ip, conf.Server.Listen.Port)
+	addr := fmt.Sprintf("%s:%d", Config.Server.Listen.Ip, Config.Server.Listen.Port)
 
 	server := http.Server{
 		Addr:    addr,

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	_config "github.com/encobrain/go-task-manager/model/config"
@@ -15,6 +15,8 @@ type config struct {
 	DbDriverManager driver.Manager  `group:"DB driver manager options" namespace:"dbDriverManager"`
 	Storage         lib.Storage     `group:"Storage options" namespace:"storage"`
 }
+
+var Config = &config{}
 
 func (c *config) Init() {
 	defer func() {
