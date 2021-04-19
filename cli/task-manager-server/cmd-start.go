@@ -5,8 +5,9 @@ import (
 	"github.com/encobrain/go-context.v2"
 	"github.com/encobrain/go-task-manager/cli"
 	contextSupp "github.com/encobrain/go-task-manager/lib/context"
+	"github.com/encobrain/go-task-manager/lib/db/driver"
+	"github.com/encobrain/go-task-manager/lib/db/storage"
 	"github.com/encobrain/go-task-manager/lib/storage/queue"
-	"github.com/encobrain/go-task-manager/lib/storage/sqlite"
 	"github.com/encobrain/go-task-manager/model/config/service"
 	task_manager "github.com/encobrain/go-task-manager/service/task-manager"
 	"github.com/gorilla/websocket"
@@ -71,10 +72,17 @@ func (c CmdStart) panicHandler(ctx context.Context, panicErr interface{}) {
 func (c CmdStart) start(ctx context.Context) {
 	ctx.PanicHandlerSet(c.panicHandler)
 
+	dbDrvMng := driver.NewManager(&conf.DbDriverManager)
+	dbDrv, err := dbDrvMng.Driver(conf.Storage.Db.DriverId)
+
+	if err != nil {
+		panic(fmt.Errorf("get db driver `%s` fail. %s", conf.Storage.Db.DriverId, err))
+	}
+
 	serverCtx := ctx.Child("server", c.startServer).
 		ValueSet("config", &service.TaskManager{})
 
-	stor := sqlite.New(&conf.Storage)
+	stor := storage.New(dbDrv)
 	sqm := queue.NewManager(stor)
 
 	ctx.ValueSet("storage.queue.manager", sqm)

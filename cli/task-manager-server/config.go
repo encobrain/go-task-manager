@@ -2,16 +2,18 @@ package main
 
 import (
 	_config "github.com/encobrain/go-task-manager/model/config"
-	"github.com/encobrain/go-task-manager/model/config/lib/storage"
+	"github.com/encobrain/go-task-manager/model/config/lib"
+	"github.com/encobrain/go-task-manager/model/config/lib/db/driver"
 	"log"
 	"os"
 )
 
 type config struct {
-	Config  _config.Config  `group:"Config options" namespace:"config"`
-	Process _config.Process `group:"Process options" namespace:"process"`
-	Server  _config.Server  `group:"Server options" namespace:"server"`
-	Storage storage.SQLite  `group:"Storage options" namespace:"storage"`
+	Config          _config.Config  `group:"Config options" namespace:"config"`
+	Process         _config.Process `group:"Process options" namespace:"process"`
+	Server          _config.Server  `group:"Server options" namespace:"server"`
+	DbDriverManager driver.Manager  `group:"DB driver manager options" namespace:"dbDriverManager"`
+	Storage         lib.Storage     `group:"Storage options" namespace:"storage"`
 }
 
 func (c *config) Init() {
@@ -26,6 +28,8 @@ func (c *config) Init() {
 
 	c.Config.Load(&c.Process)
 	c.Config.Load(&c.Server)
+	c.Config.Load(&c.DbDriverManager)
+	c.Config.Load(&c.Storage)
 
 	return
 }

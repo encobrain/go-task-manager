@@ -1,29 +1,62 @@
-package sqlite
+package storage
 
 import (
 	"fmt"
-	"github.com/encobrain/go-task-manager/lib/storage"
-	confStorage "github.com/encobrain/go-task-manager/model/config/lib/storage"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"log"
-	"os"
 	"sync"
-	"time"
 )
 
-func New(config *confStorage.SQLite) *Storage {
-	s := &Storage{
-		conf: config,
+type QueueInfo struct {
+	Id   uint64
+	Name string
+}
+
+type TaskInfo struct {
+	QueueId    uint64
+	UUID       string
+	ParentUUID string
+	Status     string
+	Content    []byte
+}
+
+type Storage interface {
+	// QueueGetOrCreate gets queue by name or creates it if not exists
+	QueueGetOrCreate(name string) *QueueInfo
+	// QueueGet gets queue by id.
+	// If nil - queue not exists
+	QueueGet(id uint64) *QueueInfo
+	// TaskNew creates new task in queue
+	// If nil - queueId invalid
+	TaskNew(queueId uint64, parentUUID string, status string, content []byte) *TaskInfo
+	// TaskGet gets task by uuid.
+	// If nil - task not exists or queueId invalid
+	TaskGet(queueId uint64, uuid string) *TaskInfo
+	// TasksGet returns all tasks in queue
+	TasksGet(queueId uint64) []*TaskInfo
+	// TaskStatusSet sets new status with content.
+	// If ok==fale - task with uuid not exists or queueId invalid
+	TaskStatusSet(queueId uint64, uuid string, status string, content []byte) (ok bool)
+	// TaskRemove removes task from queue.
+	// If ok==false - task not exists or queueId invalid
+	TaskRemove(queueId uint64, uuid string) (ok bool)
+}
+
+type StorageWithControl interface {
+	Storage
+	Start()
+	Stop()
+}
+
+func New(dbDriver *gorm.DB) StorageWithControl {
+	s := &storage{
+		db: dbDriver,
 	}
 
 	return s
 }
 
-type Storage struct {
-	conf *confStorage.SQLite
-
+type storage struct {
 	mu        sync.Mutex
 	isStarted bool
 	db        *gorm.DB
@@ -34,7 +67,7 @@ type Storage struct {
 	}
 }
 
-func (s *Storage) Start() {
+func (s *storage) Start() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -42,39 +75,20 @@ func (s *Storage) Start() {
 		return
 	}
 
-	log.Printf("SQLiteStorage: starting...\n")
+	log.Printf("Storage: starting...\n")
 
-	dbLog := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		logger.Config{
-			SlowThreshold:             time.Second, // Slow SQL threshold
-			LogLevel:                  logger.Info, // Log level
-			IgnoreRecordNotFoundError: true,        // Ignore ErrRecordNotFound error for logger
-			Colorful:                  false,       // Disable color
-		},
-	)
-
-	db, err := gorm.Open(sqlite.Open(s.conf.Db.Path), &gorm.Config{
-		Logger: dbLog,
-	})
-
-	if err != nil {
-		panic(fmt.Errorf("open db `%s` fail. %s", s.conf.Db.Path, err))
-	}
-
-	err = db.AutoMigrate(&dbQueue{}, &dbTask{})
+	err := s.db.AutoMigrate(&dbQueue{}, &dbTask{})
 
 	if err != nil {
 		panic(fmt.Errorf("auto migrate fail. %s", err))
 	}
 
-	s.db = db
 	s.isStarted = true
 
-	log.Printf("SQLiteStorage: started\n")
+	log.Printf("Storage: started\n")
 }
 
-func (s *Storage) Stop() {
+func (s *storage) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,7 +111,7 @@ func (s *Storage) Stop() {
 	log.Printf("SQLiteStorage: stopped\n")
 }
 
-func (s *Storage) QueueGetOrCreate(name string) *storage.QueueInfo {
+func (s *storage) QueueGetOrCreate(name string) *QueueInfo {
 	iq, _ := s.cache.queueByName.Load(name)
 
 	for iq == nil {
@@ -141,13 +155,13 @@ func (s *Storage) QueueGetOrCreate(name string) *storage.QueueInfo {
 
 	q := iq.(*queue)
 
-	return &storage.QueueInfo{
+	return &QueueInfo{
 		Id:   uint64(q.ID),
 		Name: q.Name,
 	}
 }
 
-func (s *Storage) queueGet(id uint64) *queue {
+func (s *storage) queueGet(id uint64) *queue {
 	iq, _ := s.cache.queueById.Load(id)
 
 	for iq == nil {
@@ -189,11 +203,11 @@ func (s *Storage) queueGet(id uint64) *queue {
 	return iq.(*queue)
 }
 
-func (s *Storage) QueueGet(id uint64) (qi *storage.QueueInfo) {
+func (s *storage) QueueGet(id uint64) (qi *QueueInfo) {
 	q := s.queueGet(id)
 
 	if q != nil {
-		qi = &storage.QueueInfo{
+		qi = &QueueInfo{
 			Id:   uint64(q.ID),
 			Name: q.Name,
 		}
@@ -202,7 +216,7 @@ func (s *Storage) QueueGet(id uint64) (qi *storage.QueueInfo) {
 	return
 }
 
-func (s *Storage) TaskNew(queueId uint64, parentUUID string, status string, content []byte) (ti *storage.TaskInfo) {
+func (s *storage) TaskNew(queueId uint64, parentUUID string, status string, content []byte) (ti *TaskInfo) {
 	q := s.queueGet(queueId)
 
 	if q != nil {
@@ -212,7 +226,7 @@ func (s *Storage) TaskNew(queueId uint64, parentUUID string, status string, cont
 	return
 }
 
-func (s *Storage) TaskGet(queueId uint64, uuid string) (ti *storage.TaskInfo) {
+func (s *storage) TaskGet(queueId uint64, uuid string) (ti *TaskInfo) {
 	q := s.queueGet(queueId)
 
 	if q != nil {
@@ -222,7 +236,7 @@ func (s *Storage) TaskGet(queueId uint64, uuid string) (ti *storage.TaskInfo) {
 	return
 }
 
-func (s *Storage) TasksGet(queueId uint64) (ts []*storage.TaskInfo) {
+func (s *storage) TasksGet(queueId uint64) (ts []*TaskInfo) {
 	q := s.queueGet(queueId)
 
 	if q != nil {
@@ -232,7 +246,7 @@ func (s *Storage) TasksGet(queueId uint64) (ts []*storage.TaskInfo) {
 	return
 }
 
-func (s *Storage) TaskStatusSet(queueId uint64, uuid string, status string, content []byte) (ok bool) {
+func (s *storage) TaskStatusSet(queueId uint64, uuid string, status string, content []byte) (ok bool) {
 	q := s.queueGet(queueId)
 
 	if q != nil {
@@ -242,7 +256,7 @@ func (s *Storage) TaskStatusSet(queueId uint64, uuid string, status string, cont
 	return
 }
 
-func (s *Storage) TaskRemove(queueId uint64, uuid string) (ok bool) {
+func (s *storage) TaskRemove(queueId uint64, uuid string) (ok bool) {
 	q := s.queueGet(queueId)
 
 	if q != nil {

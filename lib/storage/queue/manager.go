@@ -1,6 +1,7 @@
 package queue
 
 import (
+	dbStorage "github.com/encobrain/go-task-manager/lib/db/storage"
 	"github.com/encobrain/go-task-manager/lib/storage"
 	"sync"
 )
@@ -13,7 +14,7 @@ type Manager interface {
 	Get(id uint64) storage.Queue
 }
 
-func NewManager(stor storage.Storage) *manager {
+func NewManager(stor dbStorage.Storage) *manager {
 	m := &manager{
 		storage: stor,
 	}
@@ -25,7 +26,7 @@ func NewManager(stor storage.Storage) *manager {
 }
 
 type manager struct {
-	storage storage.Storage
+	storage dbStorage.Storage
 
 	mu    sync.Mutex
 	queue struct {

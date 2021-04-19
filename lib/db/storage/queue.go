@@ -1,8 +1,7 @@
-package sqlite
+package storage
 
 import (
 	"fmt"
-	"github.com/encobrain/go-task-manager/lib/storage"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"log"
@@ -56,7 +55,7 @@ func (q *queue) stop() {
 	q.task.all = false
 }
 
-func (q *queue) taskNew(parentUUID string, status string, content []byte) *storage.TaskInfo {
+func (q *queue) taskNew(parentUUID string, status string, content []byte) *TaskInfo {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -85,7 +84,7 @@ func (q *queue) taskNew(parentUUID string, status string, content []byte) *stora
 
 	q.task.list.Store(dbt.UUID, t)
 
-	return &storage.TaskInfo{
+	return &TaskInfo{
 		QueueId:    uint64(q.ID),
 		UUID:       dbt.UUID,
 		ParentUUID: dbt.ParentUUID,
@@ -138,13 +137,13 @@ func (q *queue) taskGet(uuid string) *task {
 	return it.(*task)
 }
 
-func (q *queue) taskGetInfo(uuid string) (info *storage.TaskInfo) {
+func (q *queue) taskGetInfo(uuid string) (info *TaskInfo) {
 	t := q.taskGet(uuid)
 
 	if t != nil {
 		t.mu.Lock()
 		defer t.mu.Unlock()
-		info = &storage.TaskInfo{
+		info = &TaskInfo{
 			QueueId:    uint64(q.ID),
 			UUID:       t.UUID,
 			ParentUUID: t.ParentUUID,
@@ -156,7 +155,7 @@ func (q *queue) taskGetInfo(uuid string) (info *storage.TaskInfo) {
 	return
 }
 
-func (q *queue) tasksInfoGet() (tasks []*storage.TaskInfo) {
+func (q *queue) tasksInfoGet() (tasks []*TaskInfo) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -190,7 +189,7 @@ func (q *queue) tasksInfoGet() (tasks []*storage.TaskInfo) {
 		t := it.(*task)
 		t.mu.Lock()
 		defer t.mu.Unlock()
-		tasks = append(tasks, &storage.TaskInfo{
+		tasks = append(tasks, &TaskInfo{
 			QueueId:    uint64(q.ID),
 			UUID:       t.UUID,
 			ParentUUID: t.ParentUUID,

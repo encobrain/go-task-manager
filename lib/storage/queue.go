@@ -1,6 +1,9 @@
 package storage
 
-import "sync"
+import (
+	"github.com/encobrain/go-task-manager/lib/db/storage"
+	"sync"
+)
 
 type Queue interface {
 	ID() uint64
@@ -21,7 +24,7 @@ type Queue interface {
 	TaskRemove(uuid string) (ok bool)
 }
 
-func NewQueue(stor Storage, info *QueueInfo) Queue {
+func NewQueue(stor storage.Storage, info *storage.QueueInfo) Queue {
 	q := &queue{
 		storage: stor,
 		info:    info,
@@ -32,8 +35,8 @@ func NewQueue(stor Storage, info *QueueInfo) Queue {
 }
 
 type queue struct {
-	info    *QueueInfo
-	storage Storage
+	info    *storage.QueueInfo
+	storage storage.Storage
 
 	mu   sync.Mutex
 	task map[string]*task

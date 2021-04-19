@@ -1,5 +1,7 @@
 package storage
 
+import "github.com/encobrain/go-task-manager/lib/db/storage"
+
 type Task interface {
 	// Canceled returns channel of actuality of task state
 	// If it closed - task state changed and datas not actual
@@ -10,7 +12,7 @@ type Task interface {
 	Content() []byte
 }
 
-func NewTask(info *TaskInfo) Task {
+func NewTask(info *storage.TaskInfo) Task {
 	t := &task{
 		info:     info,
 		canceled: make(chan struct{}),
@@ -20,7 +22,7 @@ func NewTask(info *TaskInfo) Task {
 }
 
 type task struct {
-	info     *TaskInfo
+	info     *storage.TaskInfo
 	canceled chan struct{}
 }
 
@@ -32,7 +34,7 @@ func (t *task) cancel() {
 func (t *task) statusSet(status string, content []byte) *task {
 	t.cancel()
 
-	return NewTask(&TaskInfo{
+	return NewTask(&storage.TaskInfo{
 		QueueId:    t.info.QueueId,
 		UUID:       t.info.UUID,
 		ParentUUID: t.info.ParentUUID,
