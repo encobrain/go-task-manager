@@ -106,6 +106,7 @@ func (c *controller) connStop() {
 	close(c.incoming.mess)
 	close(c.incoming.reqs)
 	close(c.finished)
+	c.conn.Close()
 
 	c.res.list.Range(func(key, value interface{}) (ok bool) {
 		ok = true
