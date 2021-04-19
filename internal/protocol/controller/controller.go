@@ -95,6 +95,7 @@ func (c *controller) MessageGet() (mess <-chan protocol.Message) {
 func (c *controller) RequestSend(req protocol.Request) (res <-chan protocol.Response, err error) {
 	id := atomic.AddUint64(&c.res.nextId, 1)
 	resCh := make(chan protocol.Response, 1)
+	res = resCh
 
 	c.res.list.Store(id, resCh)
 
@@ -108,7 +109,7 @@ func (c *controller) RequestSend(req protocol.Request) (res <-chan protocol.Resp
 		close(resCh)
 	}
 
-	return resCh, err
+	return
 }
 
 func (c *controller) RequestGet() (reqs <-chan protocol.Request) {
