@@ -49,8 +49,8 @@ func (c *Config) Load(conf pathfiler) {
 	f, err := os.Open(filepath.Resolve(true, c.Path, pathfile))
 
 	if err != nil {
-		if errors.Is(err, syscall.ERROR_FILE_NOT_FOUND) ||
-			errors.Is(err, syscall.ERROR_PATH_NOT_FOUND) {
+		if errors.Is(err, syscall.ENOENT) ||
+			errors.Is(err, syscall.ENOTDIR) {
 			log.Printf("CONFIG: file %s not found\n", pathfile)
 			return
 		}
