@@ -1,8 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"os"
+	"syscall"
 
 	"github.com/encobrain/go-task-manager/lib/filepath"
 
@@ -46,6 +49,11 @@ func (c *Config) Load(conf pathfiler) {
 	f, err := os.Open(filepath.Resolve(true, c.Path, pathfile))
 
 	if err != nil {
+		if errors.Is(err, syscall.ERROR_FILE_NOT_FOUND) {
+			log.Printf("CONFIG: file %s not found\n", pathfile)
+			return
+		}
+
 		panic(fmt.Errorf("open %s fail. %s", pathfile, err))
 	}
 

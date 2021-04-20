@@ -1,2 +1,0 @@
-run:
-  pid_pathfile: "./task-manager-server.pid"
