@@ -9,7 +9,7 @@ import (
 	"github.com/encobrain/go-task-manager/lib/db/storage"
 	"github.com/encobrain/go-task-manager/lib/storage/queue"
 	"github.com/encobrain/go-task-manager/model/config/service"
-	task_manager "github.com/encobrain/go-task-manager/service/task-manager"
+	"github.com/encobrain/go-task-manager/service/task-manager"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
@@ -18,8 +18,8 @@ import (
 )
 
 type Start struct {
-	*Config
-	cli.CmdStart
+	*Config      `no-flag:"true"`
+	cli.CmdStart `no-flag:"true"`
 }
 
 func (c Start) Execute(args []string) (err error) {

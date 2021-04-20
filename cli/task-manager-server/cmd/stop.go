@@ -5,8 +5,8 @@ import (
 )
 
 type Stop struct {
-	*Config
-	cli.CmdStop
+	*Config     `no-flag:"true"`
+	cli.CmdStop `no-flag:"true"`
 }
 
 func (c Stop) Execute(args []string) error {
