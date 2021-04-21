@@ -46,7 +46,7 @@ func (q *queue) stop() {
 	})
 
 	if len(dbts) != 0 {
-		err := q.db.Save(dbts).Error
+		err := q.db.CreateInBatches(dbts, 1000).Error
 
 		if err != nil {
 			log.Printf("Queue[%s]: Save tasks(%d) fail. %s\n%+v\n", q.Name, len(dbts), err, dbts)
