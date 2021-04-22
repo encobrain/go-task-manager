@@ -339,7 +339,7 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 		t.cancel(fmt.Errorf(ot.Reason))
 		delete(c.task.list, stateId)
 	case *task:
-		if ot.queueId != queueId ||
+		if ot.queueId != 0 && ot.queueId != queueId ||
 			ot.uuid != uuid ||
 			ot.parentUUID != parentUUID {
 
