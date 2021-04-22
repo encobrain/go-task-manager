@@ -337,8 +337,17 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	switch ot := it.(type) {
 	case *mes.SC_TaskCancel_ms:
 		t.cancel(fmt.Errorf(ot.Reason))
+		delete(c.task.list, stateId)
 	case *task:
-		ot.cancel(fmt.Errorf("invalid state"))
+		if ot.queueId != queueId ||
+			ot.uuid != uuid ||
+			ot.parentUUID != parentUUID {
+
+			panic(fmt.Errorf("Old task with same state id but different datas: queueId old(%d) new(%d), uuid old(%s) new(%s) parentUUD old(%s) new(%s) ",
+				ot.queueId, queueId, ot.uuid, uuid, ot.parentUUID, parentUUID))
+		}
+	default:
+		c.task.list[stateId] = t
 	}
 
 	t.ctx = c.ctx.worker
@@ -350,8 +359,6 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 	t.uuid = uuid
 	t.parentUUID = parentUUID
 	t.status = status
-
-	c.task.list[stateId] = t
 
 	return t
 }
@@ -433,6 +440,7 @@ func (c *client) connMesProcess(ctx context.Context) {
 		}
 
 		it.(*task).cancel(fmt.Errorf(m.Reason))
+		delete(c.task.list, m.StateId)
 
 	case *mes.SC_TaskStatus_ms:
 		c.task.mu.Lock()
