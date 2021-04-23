@@ -346,6 +346,13 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 			panic(fmt.Errorf("Old task with same state id but different datas: queueId old(%d) new(%d), uuid old(%s) new(%s) parentUUD old(%s) new(%s) ",
 				ot.queueId, queueId, ot.uuid, uuid, ot.parentUUID, parentUUID))
 		}
+
+		t = ot
+
+		if ot.stateId > stateId {
+			return ot
+		}
+
 	default:
 		c.task.list[stateId] = t
 	}
@@ -476,10 +483,14 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 		si := sii.(*subInfo)
 
-		var t Task // FUCKING GO!!!!! nil obj != nil interface
+		var t *task
 
 		if m.Info != nil {
 			t = c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+
+			if t.stateId != m.Info.StateId {
+				return
+			}
 		}
 
 		select {
