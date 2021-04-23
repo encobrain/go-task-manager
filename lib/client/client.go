@@ -460,11 +460,13 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 			log.Printf("TMClient: not found task status subscribe. subscribeId=%d. Waiting subscribe done...\n", m.SubscribeId)
 
+			var ok bool
+
 			select {
 			case <-ctx.Done():
 				return
-			case sii = <-ch:
-				if sii == nil {
+			case sii, ok = <-ch:
+				if !ok {
 					return
 				}
 			}
