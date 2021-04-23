@@ -64,8 +64,8 @@ type client struct {
 
 	task struct {
 		mu              sync.Mutex
-		list            map[uint64]interface{} // map[stateId]*task|*SC_TaskCancel_ms
-		statusSubscribe map[uint64]interface{} // *subInfo|chan *subInfo
+		list            map[uint64]interface{} // map[stateId]*task|*mes.SC_TaskCancel_ms
+		statusSubscribe map[uint64]interface{} // *subInfo|chan struct{}
 	}
 
 	protocol struct {
@@ -383,14 +383,11 @@ func (c *client) taskStatusSubscribe(subscribeId uint64, queueId uint64) (ch cha
 
 	sii := c.task.statusSubscribe[subscribeId]
 
-	switch i := sii.(type) {
-	case chan *subInfo:
-		si := &subInfo{queueId, make(chan Task)}
-		c.task.statusSubscribe[subscribeId] = si
-		i <- si
-		return si.ch
+	switch si := sii.(type) {
+	case chan struct{}:
+		close(si)
 	case *subInfo:
-		return i.ch
+		return si.ch
 	}
 
 	si := &subInfo{queueId, make(chan Task)}
@@ -450,47 +447,45 @@ func (c *client) connMesProcess(ctx context.Context) {
 		delete(c.task.list, m.StateId)
 
 	case *mes.SC_TaskStatus_ms:
-		c.task.mu.Lock()
+		var sii interface{}
 
-		sii := c.task.statusSubscribe[m.SubscribeId]
+	wait:
+		for {
+			c.task.mu.Lock()
 
-		if ch, ok := sii.(chan *subInfo); ok {
-			close(ch)
-			sii = nil
-		}
+			sii = c.task.statusSubscribe[m.SubscribeId]
 
-		if sii == nil {
-			ch := make(chan *subInfo)
+			switch sii.(type) {
+			case *subInfo:
+				c.task.mu.Unlock()
+				break wait
+			case nil:
+				sii = make(chan struct{})
+				c.task.statusSubscribe[m.SubscribeId] = sii
+				c.task.mu.Unlock()
+			}
 
-			c.task.statusSubscribe[m.SubscribeId] = ch
-			c.task.mu.Unlock()
-
-			log.Printf("TMClient: not found task status subscribe. subscribeId=%d. Waiting subscribe done...\n", m.SubscribeId)
-
-			var ok bool
+			ch := sii.(chan struct{})
 
 			select {
 			case <-ctx.Done():
 				return
-			case sii, ok = <-ch:
-				if !ok {
-					return
-				}
+			case <-ch:
 			}
-		} else {
-			c.task.mu.Unlock()
 		}
 
 		si := sii.(*subInfo)
 
-		var t *task
+		var t Task // FUCKING GO!!!!! nil obj != nil interface
 
 		if m.Info != nil {
-			t = c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
+			tt := c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 
-			if t.stateId != m.Info.StateId {
+			if tt.stateId != m.Info.StateId {
 				return
 			}
+
+			t = tt
 		}
 
 		select {
