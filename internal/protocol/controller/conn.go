@@ -10,7 +10,7 @@ import (
 
 func (c *controller) connIncomingReq(req protocol.Request) {
 	j, _ := json.Marshal(req)
-	log.Printf("TMProtocol<%s>: incoming req %T %s", c.conn.RemoteAddr(), req, j)
+	log.Printf("TMProtocol<%s>: incoming req %T %s\n", c.conn.RemoteAddr(), req, j)
 
 	defer func() { recover() }()
 	c.incoming.reqs <- req
@@ -18,7 +18,7 @@ func (c *controller) connIncomingReq(req protocol.Request) {
 
 func (c *controller) connIncomingMes(mes protocol.Message) {
 	j, _ := json.Marshal(mes)
-	log.Printf("TMProtocol<%s>: incoming mes %T %s", c.conn.RemoteAddr(), mes, j)
+	log.Printf("TMProtocol<%s>: incoming mes %T %s\n", c.conn.RemoteAddr(), mes, j)
 
 	defer func() { recover() }()
 	c.incoming.mess <- mes
@@ -26,9 +26,16 @@ func (c *controller) connIncomingMes(mes protocol.Message) {
 
 func (c *controller) connIncomingRes(ch chan protocol.Response, res protocol.Response) {
 	j, _ := json.Marshal(res)
-	log.Printf("TMProtocol<%s>: incoming res %T %s", c.conn.RemoteAddr(), res, j)
+	log.Printf("TMProtocol<%s>: incoming res %T %s\n", c.conn.RemoteAddr(), res, j)
 
-	defer func() { recover() }()
+	defer func() {
+		err := recover()
+		if err == nil {
+			return
+		}
+
+		log.Printf("TMProtocol<%s>: send incoming res %T %s fail. Channel closed\n", c.conn.RemoteAddr(), res, j)
+	}()
 	ch <- res
 	close(ch)
 }
