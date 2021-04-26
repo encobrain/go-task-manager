@@ -339,12 +339,12 @@ func (c *client) taskNew(queueId uint64, stateId uint64, uuid string, parentUUID
 		t.cancel(fmt.Errorf(ot.Reason))
 		delete(c.task.list, stateId)
 	case *task:
-		if ot.queueId != 0 && ot.queueId != queueId ||
+		if ot.queueId != 0 && queueId != 0 && ot.queueId != queueId ||
 			ot.uuid != uuid ||
 			ot.parentUUID != parentUUID {
 
-			panic(fmt.Errorf("Old task with same state id but different datas: queueId old(%d) new(%d), uuid old(%s) new(%s) parentUUD old(%s) new(%s) ",
-				ot.queueId, queueId, ot.uuid, uuid, ot.parentUUID, parentUUID))
+			panic(fmt.Errorf("Old task with same state id (%d) but different datas: queueId old(%d) new(%d), uuid old(%s) new(%s) parentUUD old(%s) new(%s) ",
+				stateId, ot.queueId, queueId, ot.uuid, uuid, ot.parentUUID, parentUUID))
 		}
 
 		t = ot
