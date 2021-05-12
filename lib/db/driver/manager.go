@@ -51,7 +51,7 @@ func (m *manager) Driver(name string) (driver *gorm.DB, err error) {
 		sslMode := "disable"
 
 		if drvConf.Extra["sslEnabled"] == true {
-			sslMode = "enable"
+			sslMode = "allow"
 		}
 
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=UTC",
