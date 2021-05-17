@@ -18,7 +18,6 @@ type queue struct {
 
 	task struct {
 		list sync.Map // map[uuid]*task
-		all  bool
 	}
 }
 
@@ -56,7 +55,6 @@ func (q *queue) stop() {
 	}
 
 	q.task.list = sync.Map{}
-	q.task.all = false
 }
 
 func (q *queue) taskNew(parentUUID string, status string, content []byte) *TaskInfo {
@@ -112,10 +110,6 @@ func (q *queue) taskGet(uuid string) *task {
 
 		if it != nil {
 			break
-		}
-
-		if q.task.all {
-			return nil
 		}
 
 		tx := q.db.Begin()
@@ -182,42 +176,38 @@ func (q *queue) tasksInfoGet() (tasks []*TaskInfo) {
 		panic(fmt.Errorf("get all tasks from `%s` queue fail. storage stopped", q.Name))
 	}
 
-	if !q.task.all {
-		dbts := make([]*dbTask, 0)
+	dbts := make([]*dbTask, 0)
 
-		tx := q.db.Begin()
+	tx := q.db.Begin()
 
-		err := tx.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
+	err := tx.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
 
-		if err != nil {
-			tx.Rollback()
-			panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
-		}
+	if err != nil {
+		tx.Rollback()
+		panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
+	}
 
-		err = tx.Unscoped().Where(&dbTask{QueueID: q.ID}).Delete(&dbTask{QueueID: q.ID}).Error
+	err = tx.Unscoped().Where(&dbTask{QueueID: q.ID}).Delete(&dbTask{QueueID: q.ID}).Error
 
-		if err != nil {
-			tx.Rollback()
-			panic(fmt.Errorf("delete tasks from db queue `%s` fail. %s", q.Name, err))
-		}
+	if err != nil {
+		tx.Rollback()
+		panic(fmt.Errorf("delete tasks from db queue `%s` fail. %s", q.Name, err))
+	}
 
-		tx.Commit()
+	tx.Commit()
 
-		for _, dbt := range dbts {
-			it, ok := q.task.list.Load(dbt.UUID)
+	for _, dbt := range dbts {
+		it, ok := q.task.list.Load(dbt.UUID)
 
-			if !ok {
-				it = &task{
-					dbTask: dbt,
-				}
-
-				q.task.list.Store(dbt.UUID, it)
+		if !ok {
+			it = &task{
+				dbTask: dbt,
 			}
 
-			it.(*task).ID = 0
+			q.task.list.Store(dbt.UUID, it)
 		}
 
-		q.task.all = true
+		it.(*task).ID = 0
 	}
 
 	q.task.list.Range(func(uuid, it interface{}) bool {
