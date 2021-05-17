@@ -4,6 +4,7 @@ import (
 	"github.com/encobrain/go-context.v2"
 	"github.com/encobrain/go-task-manager/lib/storage"
 	"sync"
+	"time"
 )
 
 func New(ctx context.Context) *Router {
@@ -51,11 +52,25 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 
 		r.subs[queue] = s
 
-		tasks := queue.TasksGet()
-
 		r.ctx.Child("subscribe", func(ctx context.Context) {
-			for _, t := range tasks {
-				r.Route(queue, t)
+			routed := map[storage.Task]bool{}
+			tick := time.Tick(time.Second * 10)
+
+			for {
+				tasks := queue.TasksGet()
+
+				for _, t := range tasks {
+					if !routed[t] {
+						routed[t] = true
+						r.Route(queue, t)
+					}
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				case <-tick:
+				}
 			}
 		}).Go()
 	}
