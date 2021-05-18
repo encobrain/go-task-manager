@@ -49,7 +49,7 @@ func (s *tmService) workerStop(reason error) {
 
 	s.ctx.worker.Cancel(reason)
 
-	<-s.ctx.worker.Finished(true)
+	<-s.ctx.worker.ChildsFinished(true)
 
 	s.statusSet(service.StatusStopped)
 }
