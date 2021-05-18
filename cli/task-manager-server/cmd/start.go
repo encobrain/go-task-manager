@@ -8,7 +8,8 @@ import (
 	"github.com/encobrain/go-task-manager/lib/db/driver"
 	"github.com/encobrain/go-task-manager/lib/db/storage"
 	"github.com/encobrain/go-task-manager/lib/storage/queue"
-	"github.com/encobrain/go-task-manager/model/config/service"
+	confService "github.com/encobrain/go-task-manager/model/config/service"
+	"github.com/encobrain/go-task-manager/service"
 	"github.com/encobrain/go-task-manager/service/task-manager"
 	"github.com/gorilla/websocket"
 	"log"
@@ -81,7 +82,7 @@ func (c Start) start(ctx context.Context) {
 	}
 
 	serverCtx := ctx.Child("server", c.startServer).
-		ValueSet("config", &service.TaskManager{})
+		ValueSet("config", &confService.TaskManager{})
 
 	stor := storage.New(dbDrv)
 	sqm := queue.NewManager(stor)
@@ -91,9 +92,9 @@ func (c Start) start(ctx context.Context) {
 	stor.Start()
 	serverCtx.Go()
 
-	<-ctx.Done()
+	<-ctx.ChildsFinished(true)
 
-	log.Printf("Stopping service...\n")
+	log.Printf("Stopping storage...")
 
 	stor.Stop()
 }
@@ -151,9 +152,13 @@ func (c Start) startServer(ctx context.Context) {
 		panic(fmt.Errorf("server listen fail. %s", err))
 	}).Go()
 
-	<-ctx.Done()
+	select {
+	case <-ctx.Done():
+	case <-tmService.StatusWait(service.StatusStopped):
+		ctx.Cancel(fmt.Errorf("task manager stopped"))
+	}
 
-	log.Printf("Closing HTTP server...\n")
+	log.Printf("Closing HTTP server because: %s ...\n", ctx.Err())
 
 	err := server.Close()
 
