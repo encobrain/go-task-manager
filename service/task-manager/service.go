@@ -68,9 +68,5 @@ func (s *tmService) Start() {
 }
 
 func (s *tmService) Stop() {
-	if !s.statusSet(service.StatusStopping, service.StatusStarting, service.StatusStarted) {
-		return
-	}
-
-	s.ctx.worker.Cancel(fmt.Errorf("service stopped"))
+	s.workerStop(fmt.Errorf("service stopped"))
 }

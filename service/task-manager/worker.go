@@ -14,9 +14,7 @@ func (s *tmService) workerPanicHandler(ctx context.Context, panicErr interface{}
 	log.Printf("Service panic. %s\n", panicErr)
 	debug.PrintStack()
 
-	ctx.Cancel(fmt.Errorf("panic"))
-
-	s.workerStop()
+	s.workerStop(fmt.Errorf("panic"))
 }
 
 func (s *tmService) workerStart(ctx context.Context) {
@@ -37,19 +35,21 @@ func (s *tmService) workerStart(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			log.Printf("Worker stopped. %s\n", ctx.Err())
-			s.workerStop()
+			s.workerStop(ctx.Err())
 			return
 		}
 	}
 
 }
 
-func (s *tmService) workerStop() {
+func (s *tmService) workerStop(reason error) {
 	if !s.statusSet(service.StatusStopping, service.StatusStarting, service.StatusStarted) {
 		return
 	}
 
-	<-s.ctx.worker.ChildsFinished(true)
+	s.ctx.worker.Cancel(reason)
+
+	<-s.ctx.worker.Finished(true)
 
 	s.statusSet(service.StatusStopped)
 }
