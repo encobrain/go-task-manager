@@ -15,7 +15,7 @@ func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
 		e := recover()
 
 		if e != nil {
-			e = fmt.Errorf("not started")
+			err = fmt.Errorf("not started")
 		}
 	}()
 
@@ -32,10 +32,11 @@ func (s *tmService) ConnServe(conn *websocket.Conn) (err error) {
 // ctx should contain vars:
 //   storage.queue.manager lib/storage/queue.Manager
 func (s *tmService) connWorker(ctx context.Context) {
+	defer log.Printf("Conn worker stopped\n")
+
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Conn worker stopped. %s\n", ctx.Err())
 			return
 		case conn, ok := <-s.conn.serve:
 			if !ok {
