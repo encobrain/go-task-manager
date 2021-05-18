@@ -3,7 +3,7 @@ module github.com/encobrain/go-task-manager
 go 1.14
 
 require (
-	github.com/encobrain/go-context.v2 v1.1.1
+	github.com/encobrain/go-context.v2 v1.1.2
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/jessevdk/go-flags v1.5.0
