@@ -215,12 +215,10 @@ func (t *task) Content() (content <-chan []byte) {
 
 			select {
 			case <-ctx.Done():
-				return
 			case <-t.canceled:
-				return
 			case resm := <-res:
 				if resm == nil {
-					continue
+					return
 				}
 
 				rs := resm.(*mes.SC_TaskContent_rs)
@@ -235,10 +233,9 @@ func (t *task) Content() (content <-chan []byte) {
 				case <-ctx.Done():
 				case ch <- *rs.Content:
 				}
-
-				return
 			}
 
+			return
 		}
 	}).Go()
 
@@ -283,12 +280,10 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 
 			select {
 			case <-ctx.Done():
-				return
 			case <-t.canceled:
-				return
 			case resm := <-res:
 				if resm == nil {
-					continue
+					return
 				}
 
 				rs := resm.(*mes.SC_TaskStatusSet_rs)
@@ -301,9 +296,9 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 				log.Printf("TMClient: Task[%s]: set status done\n", t.uuid)
 
 				ch <- true
-
-				return
 			}
+
+			return
 
 		}
 	}).Go()
@@ -352,7 +347,7 @@ func (t *task) Remove() (done <-chan bool) {
 				return
 			case resm := <-res:
 				if resm == nil {
-					continue
+					return
 				}
 
 				rs := resm.(*mes.SC_TaskRemove_rs)
@@ -364,10 +359,7 @@ func (t *task) Remove() (done <-chan bool) {
 
 				log.Printf("TMClient: Task[%s]: remove done\n", t.uuid)
 
-				select {
-				case <-ctx.Done():
-				case ch <- true:
-				}
+				ch <- true
 
 				return
 			}
@@ -424,16 +416,14 @@ func (t *task) Reject() (done <-chan struct{}) {
 
 			select {
 			case <-ctx.Done():
-				return
 			case <-t.canceled:
-				return
 			case resm := <-res:
 				if resm != nil {
 					log.Printf("TMClient: Task[%s]: reject done\n", t.uuid)
-
-					return
 				}
 			}
+
+			return
 
 		}
 	}).Go()
