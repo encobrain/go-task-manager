@@ -2,6 +2,7 @@ package storage
 
 import (
 	"github.com/encobrain/go-task-manager/lib/db/storage"
+	"log"
 	"sync"
 )
 
@@ -114,6 +115,8 @@ func (q *queue) TaskStatusSet(uuid string, status string, content []byte) Task {
 		return nil
 	}
 
+	log.Printf("Task[%s]: settings status `%s`...\n", uuid, status)
+
 	if !q.storage.TaskStatusSet(q.info.Id, uuid, status, content) {
 		return nil
 	}
@@ -136,6 +139,8 @@ func (q *queue) TaskRemove(uuid string) (ok bool) {
 	if it == nil {
 		return
 	}
+
+	log.Printf("Task[%s]: removing...\n", uuid)
 
 	if !q.storage.TaskRemove(q.info.Id, uuid) {
 		return
