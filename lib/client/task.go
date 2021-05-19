@@ -300,13 +300,7 @@ func (t *task) StatusSet(status string, content []byte) (done <-chan bool) {
 
 				log.Printf("TMClient: Task[%s]: set status done\n", t.uuid)
 
-				t.status = status
-				t.stateId = *rs.StateId
-
-				select {
-				case <-ctx.Done():
-				case ch <- true:
-				}
+				ch <- true
 
 				return
 			}
