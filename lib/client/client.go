@@ -462,8 +462,9 @@ func (c *client) connMesProcess(ctx context.Context) {
 			case nil:
 				sii = make(chan struct{})
 				c.task.statusSubscribe[m.SubscribeId] = sii
-				c.task.mu.Unlock()
 			}
+
+			c.task.mu.Unlock()
 
 			ch := sii.(chan struct{})
 
