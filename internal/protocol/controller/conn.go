@@ -110,8 +110,6 @@ func (c *controller) connRead() {
 }
 
 func (c *controller) connStop() {
-	close(c.incoming.mess)
-	close(c.incoming.reqs)
 	close(c.finished)
 	c.conn.Close()
 

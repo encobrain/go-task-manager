@@ -17,14 +17,12 @@ type Controller interface {
 	// Message sends message to another side
 	MessageSend(mes protocol.Message) error
 	// Message get returns channel with incoming messages
-	// If closed - finished
 	MessageGet() (mess <-chan protocol.Message)
 	// Request sends request and waits response
 	// Chan closed with result
 	// If received nil - finished
 	RequestSend(req protocol.Request) (res <-chan protocol.Response, err error)
 	// RequestGet returns channel with incoming requests
-	// if closed - finished
 	RequestGet() (reqs <-chan protocol.Request)
 	// ResponseSend sends response on request
 	ResponseSend(req protocol.Request, res protocol.Response) error
