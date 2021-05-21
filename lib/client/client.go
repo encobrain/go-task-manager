@@ -309,6 +309,8 @@ func (c *client) connRead(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-protCtl.Finished():
+			return
 		case mes := <-protCtl.MessageGet():
 			if mes == nil {
 				return
@@ -413,9 +415,8 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 	case *mes.SC_QueueSubscribeTask_ms:
 		c.queue.mu.Lock()
-		defer c.queue.mu.Unlock()
-
 		si, ok := c.queue.tasksSubscribe[m.SubscribeId]
+		c.queue.mu.Unlock()
 
 		if !ok {
 			log.Printf("TMClient: not found tasks subscribe. subscribeId=%d. Task rejected\n", m.SubscribeId)
