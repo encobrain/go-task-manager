@@ -49,19 +49,19 @@ func (c *controller) connRead() {
 		if err != nil {
 			err := &ErrorReadFail{Orig: err}
 
-			go c.connIncomingMes(err)
+			c.connIncomingMes(err)
 			break
 		}
 
 		if mt != websocket.TextMessage {
 			err := &ErrorReadFail{Orig: fmt.Errorf("invalid message format. type=%v", mt)}
-			go c.connIncomingMes(err)
+			c.connIncomingMes(err)
 			break
 		}
 
 		if len(bytes) < 1 {
 			err := &ErrorReadFail{Orig: fmt.Errorf("zero message size")}
-			go c.connIncomingMes(err)
+			c.connIncomingMes(err)
 			break
 		}
 
@@ -71,7 +71,7 @@ func (c *controller) connRead() {
 
 		if !ok {
 			err := &ErrorReadFail{Orig: fmt.Errorf("unknown message type. type=%d", code)}
-			go c.connIncomingMes(err)
+			c.connIncomingMes(err)
 			break
 		}
 
@@ -81,13 +81,13 @@ func (c *controller) connRead() {
 
 		if err != nil {
 			err := &ErrorReadFail{Orig: fmt.Errorf("unmarshal message fail. %s", err)}
-			go c.connIncomingMes(err)
+			c.connIncomingMes(err)
 			break
 		}
 
 		switch m := mes.(type) {
 		case protocol.Request:
-			go c.connIncomingReq(m)
+			c.connIncomingReq(m)
 
 		case protocol.Response:
 			id := m.GetResponseId()
@@ -95,16 +95,16 @@ func (c *controller) connRead() {
 
 			if !ok {
 				err := &ErrorUnhandledResponse{Mes: m}
-				go c.connIncomingMes(err)
+				c.connIncomingMes(err)
 				continue
 			}
 
 			c.res.list.Delete(id)
 
-			go c.connIncomingRes(resCh.(chan protocol.Response), m)
+			c.connIncomingRes(resCh.(chan protocol.Response), m)
 
 		default:
-			go c.connIncomingMes(m.(protocol.Message))
+			c.connIncomingMes(m.(protocol.Message))
 		}
 	}
 }
