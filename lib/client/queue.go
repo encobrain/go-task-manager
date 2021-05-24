@@ -6,6 +6,8 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol/controller"
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"log"
+	"runtime"
+	"strings"
 )
 
 type Queue interface {
@@ -20,9 +22,10 @@ type Queue interface {
 	// If nil - task not exists.
 	TaskGet(uuid string) (task <-chan Task)
 	// TasksSubscribe subscribes to get tasks from queue for process.
-	// If paretnUUID not empty - subscribe onlyon tasks with that parent uuid
+	// If paretnUUID not empty - subscribe only on tasks with that parent uuid
 	// If nil - client stopped.
-	TasksSubscribe(parentUUID string) (tasks <-chan Task)
+	// Close tasks channel - cancel subscribe
+	TasksSubscribe(parentUUID string) (tasks chan Task)
 	// TasksGet gets all tasks with/or without parentUUID in queue.
 	// If nil - client stopped.
 	// Chan closed with result.
@@ -179,11 +182,76 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 	return ch
 }
 
-func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
+func (q *queue) TasksSubscribe(parentUUID string) (tasks chan Task) {
 	ch := make(chan Task)
 
 	q.ctx.Child("queue.tasks.subscribe", func(ctx context.Context) {
+		var e interface{}
+
+		defer func() {
+			recover()
+
+			if e == nil {
+				return
+			}
+
+			if re, ok := e.(runtime.Error); ok {
+				if strings.Contains(re.Error(), "send on closed channel") {
+					return
+				}
+			}
+
+			panic(e)
+		}()
+
 		defer close(ch)
+
+		defer func() {
+			e = recover()
+		}()
+
+		var subscribeId *uint64
+
+		defer func() {
+			if subscribeId == nil {
+				return
+			}
+
+			log.Printf("TMClient: Queue[%s]: unsubscribing %d...\n", q.name, *subscribeId)
+
+			for {
+				var protCtl controller.Controller
+
+				select {
+				case <-ctx.Done():
+					return
+				case protCtl = <-q.protocol.ctl:
+					if protCtl == nil {
+						log.Printf("TMClient: Queue[%s]: client stopped\n", q.name)
+						return
+					}
+				}
+
+				res, err := protCtl.RequestSend(&mes.CS_QueueTasksUnsubscribe_rq{
+					SubscribeId: *subscribeId,
+				})
+
+				if err != nil {
+					log.Printf("TMClient: Queue[%s]: send request fail. %s\n", q.name, err)
+					continue
+				}
+
+				select {
+				case <-ctx.Done():
+				case resm := <-res:
+					if resm != nil {
+						log.Printf("TMClient: Queue[%s]: ubsubscribe %d done\n", q.name, *subscribeId)
+					}
+				}
+
+				return
+			}
+		}()
 
 		log.Printf("TMClient: Queue[%s]: tasks subscribing parentUUID=%s ...\n", q.name, parentUUID)
 
@@ -220,7 +288,9 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 
 				rs := resm.(*mes.SC_QueueTasksSubscribe_rs)
 
-				if rs.SubscribeId == nil {
+				subscribeId = rs.SubscribeId
+
+				if subscribeId == nil {
 					panic(fmt.Errorf("tasks subscribe fail. queueId[%d] invalid", q.id))
 				}
 
@@ -229,10 +299,18 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks <-chan Task) {
 				q.tasks.subscribe(*rs.SubscribeId, q.id, ch)
 			}
 
-			select {
-			case <-ctx.Done():
-				return
-			case <-protCtl.Finished():
+		send:
+			for {
+				select {
+				case <-ctx.Done():
+					subscribeId = nil
+					return
+				case v := <-ch:
+					ch <- v
+				case <-protCtl.Finished():
+					subscribeId = nil
+					break send
+				}
 			}
 
 			log.Printf("TMClient: Queue[%s]: tasks resubscribing parentUUID=%s ...\n", q.name, parentUUID)

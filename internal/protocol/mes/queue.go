@@ -116,6 +116,33 @@ func (SC_QueueSubscribeTask_ms) New() interface{} {
 
 ////////////////////////////////////
 
+type CS_QueueTasksUnsubscribe_rq struct {
+	RqId
+	SubscribeId uint64
+}
+
+func (CS_QueueTasksUnsubscribe_rq) Code() byte {
+	return 'n'
+}
+
+func (CS_QueueTasksUnsubscribe_rq) New() interface{} {
+	return &CS_QueueTasksUnsubscribe_rq{}
+}
+
+type SC_QueueTasksUnsubscribe_rs struct {
+	RsId
+}
+
+func (SC_QueueTasksUnsubscribe_rs) Code() byte {
+	return 'N'
+}
+
+func (SC_QueueTasksUnsubscribe_rs) New() interface{} {
+	return &SC_QueueSubscribeTask_ms{}
+}
+
+////////////////////////////////////
+
 type CS_QueueTasksGet_rq struct {
 	RqId
 	QueueId    uint64
