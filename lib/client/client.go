@@ -426,6 +426,23 @@ func (c *client) connMesProcess(ctx context.Context) {
 
 		t := c.taskNew(si.queueId, m.Info.StateId, m.Info.UUID, m.Info.ParentUUID, m.Info.Status)
 
+		defer func() {
+			e := recover()
+
+			if e == nil {
+				return
+			}
+
+			t.Reject()
+
+			c.queue.mu.Lock()
+			defer c.queue.mu.Unlock()
+
+			if c.queue.tasksSubscribe[m.SubscribeId] == si {
+				delete(c.queue.tasksSubscribe, m.SubscribeId)
+			}
+		}()
+
 		select {
 		case <-ctx.Done():
 			t.Reject()
