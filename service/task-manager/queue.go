@@ -143,6 +143,26 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 }
 
 // ctx should contain vars:
+//   req *protocol/mes/CS_QueueTasksUnsubscribe_rq
+//   queue.subscribe.state *queueSubscribeState
+//   protocol.ctl protocol/controller.Controller
+func (s *tmService) queueTasksUnsubscribe(ctx context.Context) {
+	req := ctx.Value("req").(*mes.CS_QueueTasksUnsubscribe_rq)
+	qss := ctx.Value("queue.subscribe.state").(*queueSubscribeState)
+	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
+
+	qss.cancel(req.SubscribeId)
+
+	res := &mes.SC_QueueTasksUnsubscribe_rs{}
+
+	err := protCtl.ResponseSend(req, res)
+
+	if err != nil {
+		log.Printf("Send response fail. %s\n", err)
+	}
+}
+
+// ctx should contain vars:
 //   storage.queue.manager lib/storage/queue.Manager
 //
 //   req *protocol/mes/CS_QueueTasksGet_rq

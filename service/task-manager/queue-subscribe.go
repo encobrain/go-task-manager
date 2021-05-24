@@ -86,6 +86,7 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 	qss := ctx.Value("queue.subscribe.state").(*queueSubscribeState)
 	subId := ctx.Value("subscribe.id").(uint64)
+	cancel := qss.getCancel(subId)
 
 	defer qss.cancel(subId)
 
@@ -94,6 +95,8 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-protCtl.Finished():
+			return
+		case <-cancel:
 			return
 		case task := <-receive:
 			ctx.Child("send", s.queueSubscribeSend).
