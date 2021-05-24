@@ -39,7 +39,9 @@ func (q *queue) stop() {
 	q.task.list.Range(func(uuid, it interface{}) bool {
 		t := it.(*task)
 
-		dbts = append(dbts, t.dbTask)
+		if t.ParentUUID == "" {
+			dbts = append(dbts, t.dbTask)
+		}
 
 		return true
 	})
