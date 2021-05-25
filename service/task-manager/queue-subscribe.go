@@ -90,6 +90,18 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 
 	defer qss.cancel(subId)
 
+	finish := make(chan struct{})
+
+	ctx.Child("finishWatcher", func(ctx context.Context) {
+		defer close(finish)
+
+		select {
+		case <-ctx.Done():
+		case <-protCtl.Finished():
+		case <-cancel:
+		}
+	})
+
 	pool := make(chan int, 1000)
 
 	for i := 0; i < len(pool); i++ {
@@ -98,21 +110,13 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return
-		case <-protCtl.Finished():
-			return
-		case <-cancel:
+		case <-finish:
 			return
 		case <-pool:
 		}
 
 		select {
-		case <-ctx.Done():
-			return
-		case <-protCtl.Finished():
-			return
-		case <-cancel:
+		case <-finish:
 			return
 		case task := <-receive:
 			ctx.Child("send", s.queueSubscribeSend).
