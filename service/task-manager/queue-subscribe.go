@@ -100,7 +100,7 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 		case <-protCtl.Finished():
 		case <-cancel:
 		}
-	})
+	}).Go()
 
 	pool := make(chan int, 1000)
 
