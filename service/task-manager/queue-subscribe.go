@@ -90,7 +90,23 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 
 	defer qss.cancel(subId)
 
+	pool := make(chan int, 1000)
+
+	for i := 0; i < len(pool); i++ {
+		pool <- 1
+	}
+
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-protCtl.Finished():
+			return
+		case <-cancel:
+			return
+		case <-pool:
+		}
+
 		select {
 		case <-ctx.Done():
 			return
@@ -100,13 +116,15 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 			return
 		case task := <-receive:
 			ctx.Child("send", s.queueSubscribeSend).
-				ValueSet("task", task).Go()
+				ValueSet("task", task).
+				ValueSet("pool", pool).Go()
 		}
 	}
 }
 
 // ctx should contain vars:
 //   task lib/storage.Task
+//   pool chan int
 //   task.state *taskState
 //   protocol.ctl protocol/controller.Controller
 //   subscribe.id uint64
@@ -114,6 +132,10 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 //   queue.subscribe.state *queueSubscribeState
 func (s *tmService) queueSubscribeSend(ctx context.Context) {
 	task := ctx.Value("task").(storage.Task)
+	pool := ctx.Value("pool").(chan int)
+
+	defer func() { pool <- 1 }()
+
 	protCtl := ctx.Value("protocol.ctl").(controller.Controller)
 	qss := ctx.Value("queue.subscribe.state").(*queueSubscribeState)
 	subId := ctx.Value("subscribe.id").(uint64)
