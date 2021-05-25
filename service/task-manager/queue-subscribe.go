@@ -104,7 +104,7 @@ func (s *tmService) queueSubscribeProcess(ctx context.Context) {
 
 	pool := make(chan int, 1000)
 
-	for i := 0; i < len(pool); i++ {
+	for i := 0; i < cap(pool); i++ {
 		pool <- 1
 	}
 
