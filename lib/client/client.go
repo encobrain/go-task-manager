@@ -244,34 +244,34 @@ func (c *client) connWorker(ctx context.Context) {
 				return
 			default:
 			}
+		} else {
+			log.Printf("TMClient: connected to %s\n", u.String())
 
-			log.Printf("TMClient: retry connect after 1sec...\n")
+			protCtl := controller.New(mes.Messages, conn)
 
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(time.Second):
-				continue
+			ctx.Child("conn.read", c.connRead).
+				ValueSet("protocol.ctl", protCtl).Go()
+
+		wait:
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-protCtl.Finished():
+					c.connDisconnected()
+					break wait
+				case c.protocol.ctl <- protCtl:
+				}
 			}
 		}
 
-		log.Printf("TMClient: connected to %s\n", u.String())
+		log.Printf("TMClient: retry connect after 1sec...\n")
 
-		protCtl := controller.New(mes.Messages, conn)
-
-		ctx.Child("conn.read", c.connRead).
-			ValueSet("protocol.ctl", protCtl).Go()
-
-	wait:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-protCtl.Finished():
-				c.connDisconnected()
-				break wait
-			case c.protocol.ctl <- protCtl:
-			}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Second):
+			continue
 		}
 	}
 }
