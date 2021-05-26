@@ -32,5 +32,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = cli.AddCommand(&CmdQueueTasksCount{})
+
+	if err != nil {
+		log.Printf("Add command queue_tasksc fail. %s", err)
+		os.Exit(1)
+	}
+
 	cli.Run()
 }
