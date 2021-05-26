@@ -6,7 +6,6 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"github.com/encobrain/go-task-manager/lib/storage"
 	"github.com/encobrain/go-task-manager/lib/storage/queue"
-	"log"
 )
 
 // ctx should contain vars:
@@ -32,11 +31,7 @@ func (s *tmService) queueGet(ctx context.Context) {
 
 	res.QueueId = queue.ID()
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -63,11 +58,7 @@ func (s *tmService) queueTaskNew(ctx context.Context) {
 		res.StateId = stateId
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -100,11 +91,7 @@ func (s *tmService) queueTaskGet(ctx context.Context) {
 		}
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -135,11 +122,7 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 			ValueSet("subscribe.queue", queue).Go()
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -155,11 +138,7 @@ func (s *tmService) queueTasksUnsubscribe(ctx context.Context) {
 
 	res := &mes.SC_QueueTasksUnsubscribe_rs{}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -204,9 +183,5 @@ func (s *tmService) queueTasksGet(ctx context.Context) {
 		}
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }

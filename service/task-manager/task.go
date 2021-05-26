@@ -5,7 +5,6 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol/controller"
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"github.com/encobrain/go-task-manager/lib/storage/queue"
-	"log"
 )
 
 // ctx should contain vars:
@@ -39,11 +38,7 @@ func (s *tmService) taskStatusSubscribe(ctx context.Context) {
 		}
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 
 	if processCtx != nil {
 		processCtx.Go()
@@ -73,11 +68,7 @@ func (s *tmService) taskContent(ctx context.Context) {
 		}
 	}
 
-	err := protCtl.ResponseSend(req, res)
-
-	if err != nil {
-		log.Printf("Send response fail. %s\n", err)
-	}
+	protCtl.ResponseSend(req, res)
 }
 
 // ctx should contain vars:
@@ -93,13 +84,7 @@ func (s *tmService) taskStatusSet(ctx context.Context) {
 
 	res := &mes.SC_TaskStatusSet_rs{}
 
-	defer func() {
-		err := protCtl.ResponseSend(req, res)
-
-		if err != nil {
-			log.Printf("Send response fail. %s\n", err)
-		}
-	}()
+	defer protCtl.ResponseSend(req, res)
 
 	task := taskState.getTask(req.StateId)
 
@@ -144,13 +129,7 @@ func (s *tmService) taskRemove(ctx context.Context) {
 
 	res := &mes.SC_TaskRemove_rs{}
 
-	defer func() {
-		err := protCtl.ResponseSend(req, res)
-
-		if err != nil {
-			log.Printf("Send response fail. %s\n", err)
-		}
-	}()
+	defer protCtl.ResponseSend(req, res)
 
 	task := taskState.getTask(req.StateId)
 
@@ -186,13 +165,7 @@ func (s *tmService) taskReject(ctx context.Context) {
 
 	res := &mes.SC_TaskReject_rs{}
 
-	defer func() {
-		err := protCtl.ResponseSend(req, res)
-
-		if err != nil {
-			log.Printf("Send response fail. %s\n", err)
-		}
-	}()
+	defer protCtl.ResponseSend(req, res)
 
 	task := taskState.getTask(req.StateId)
 
