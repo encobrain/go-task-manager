@@ -92,7 +92,7 @@ func (c Start) start(ctx context.Context) {
 	stor.Start()
 	serverCtx.Go()
 
-	<-ctx.ChildsFinished(true)
+	<-ctx.Done()
 
 	log.Printf("Stopping storage...")
 
