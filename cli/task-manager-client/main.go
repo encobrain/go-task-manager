@@ -39,5 +39,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = cli.AddCommand(&CmdQueueDelTasks{})
+
+	if err != nil {
+		log.Printf("Add command queue_del_tasks fail. %s", err)
+		os.Exit(1)
+	}
+
 	cli.Run()
 }
