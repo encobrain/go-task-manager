@@ -49,6 +49,8 @@ func (c CmdQueueTasks) Execute(args []string) (err error) {
 				f = append(f, t)
 			}
 		}
+
+		tasks = f
 	}
 
 	log.Printf("Got %d tasks", len(tasks))
