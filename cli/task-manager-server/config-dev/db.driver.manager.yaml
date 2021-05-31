@@ -1,8 +1,8 @@
 drivers:
-  postgres:
+  storage:
     db:
       type: "postgres"
-      name: "task_manager_tasks"
+      name: "task_manager"
     connect:
       host: "localhost"
       port: 5432
@@ -11,9 +11,3 @@ drivers:
       pass: "aqw1346790"
     extra:
       sslEnabled: false
-  storage:
-    db:
-      type: "sqlite"
-      name: "storage.db.sqlite3"
-    extra:
-      dirpath: "./"
