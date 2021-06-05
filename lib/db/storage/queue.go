@@ -180,23 +180,33 @@ func (q *queue) tasksInfoGet() (tasks []*TaskInfo) {
 
 	dbts := make([]*dbTask, 0)
 
-	tx := q.db.Begin()
+	count := int64(0)
 
-	err := tx.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
-
-	if err != nil {
-		tx.Rollback()
-		panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
-	}
-
-	err = tx.Unscoped().Where(&dbTask{QueueID: q.ID}).Delete(&dbTask{QueueID: q.ID}).Error
+	err := q.db.Model(&dbTask{}).Where(&dbTask{QueueID: q.ID}).Count(&count).Error
 
 	if err != nil {
-		tx.Rollback()
-		panic(fmt.Errorf("delete tasks from db queue `%s` fail. %s", q.Name, err))
+		panic(fmt.Errorf("get queue `%s` all tasks count from db fail. %s", q.Name, err))
 	}
 
-	tx.Commit()
+	if count > 0 {
+		tx := q.db.Begin()
+
+		err := tx.Where(&dbTask{QueueID: q.ID}).Find(&dbts).Error
+
+		if err != nil {
+			tx.Rollback()
+			panic(fmt.Errorf("get queue `%s` all tasks from db fail. %s", q.Name, err))
+		}
+
+		err = tx.Unscoped().Where(&dbTask{QueueID: q.ID}).Delete(&dbTask{QueueID: q.ID}).Error
+
+		if err != nil {
+			tx.Rollback()
+			panic(fmt.Errorf("delete tasks from db queue `%s` fail. %s", q.Name, err))
+		}
+
+		tx.Commit()
+	}
 
 	for _, dbt := range dbts {
 		it, ok := q.task.list.Load(dbt.UUID)
