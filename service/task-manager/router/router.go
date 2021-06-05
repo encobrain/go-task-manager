@@ -16,9 +16,14 @@ func New(ctx context.Context) *Router {
 	return r
 }
 
+type routeState int
+
 type subs struct {
+	mu      sync.Mutex
+	ctx     context.Context
 	process chan storage.Task
 	chans   map[string]chan storage.Task
+	routed  map[storage.Task]bool
 }
 
 func (s *subs) getChannel(parrentUUID string) (ch chan storage.Task) {
@@ -30,6 +35,28 @@ func (s *subs) getChannel(parrentUUID string) (ch chan storage.Task) {
 	}
 
 	return
+}
+
+// false - already routed
+func (s *subs) setRouted(task storage.Task) (ok bool) {
+	if s.routed[task] {
+		return
+	}
+
+	s.routed[task] = true
+
+	s.ctx.Child("canceled", func(ctx context.Context) {
+		select {
+		case <-ctx.Done():
+		case <-task.Canceled():
+			s.mu.Lock()
+			defer s.mu.Unlock()
+
+			delete(s.routed, task)
+		}
+	}).Go()
+
+	return true
 }
 
 type Router struct {
@@ -45,26 +72,22 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 	s := r.subs[queue]
 
 	if s == nil {
-		s = &subs{
-			process: make(chan storage.Task),
-			chans:   map[string]chan storage.Task{},
-		}
-
-		r.subs[queue] = s
-
-		r.ctx.Child("subscribe", func(ctx context.Context) {
-			routed := map[storage.Task]bool{}
+		subCtx := r.ctx.Child("subscribe", func(ctx context.Context) {
 			tick := time.Tick(time.Second * 10)
 
 			for {
-				tasks := queue.TasksGet()
+				func() {
+					tasks := queue.TasksGet()
 
-				for _, t := range tasks {
-					if !routed[t] {
-						routed[t] = true
-						r.Route(queue, t)
+					s.mu.Lock()
+					defer s.mu.Unlock()
+
+					for _, t := range tasks {
+						if s.setRouted(t) {
+							r.Route(queue, t)
+						}
 					}
-				}
+				}()
 
 				select {
 				case <-ctx.Done():
@@ -72,15 +95,28 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 				case <-tick:
 				}
 			}
-		}).Go()
+		})
+
+		s = &subs{
+			ctx:     subCtx,
+			process: make(chan storage.Task),
+			chans:   map[string]chan storage.Task{},
+			routed:  map[storage.Task]bool{},
+		}
+
+		r.subs[queue] = s
+
+		subCtx.Go()
 	}
 
 	return s.getChannel(parentUUID)
 }
 
 func (r *Router) Route(queue storage.Queue, task storage.Task) {
+	canceled := task.Canceled()
+
 	select {
-	case <-task.Canceled():
+	case <-canceled:
 		return
 	default:
 	}
@@ -98,11 +134,15 @@ func (r *Router) Route(queue storage.Queue, task storage.Task) {
 	parCh := s.getChannel(task.ParentUUID())
 
 	r.ctx.Child("route", func(ctx context.Context) {
+		s.mu.Lock()
+		s.setRouted(task)
+		s.mu.Unlock()
+
 		defer func() { recover() }()
 
 		select {
 		case <-ctx.Done():
-		case <-task.Canceled():
+		case <-canceled:
 		case allCh <- task:
 		case parCh <- task:
 		}

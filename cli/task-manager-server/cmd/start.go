@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/pprof"
+	"runtime"
 	"runtime/debug"
 	"time"
 )
@@ -42,6 +43,12 @@ func (c Start) Execute(args []string) (err error) {
 		serveMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 		log.Printf("DEBUG: added pprof")
+
+		go func() {
+			for range time.Tick(time.Second * 10) {
+				runtime.GC()
+			}
+		}()
 	}
 
 	var debugShowContexts <-chan time.Time
