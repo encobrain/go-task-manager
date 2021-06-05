@@ -2,6 +2,7 @@ package context
 
 import (
 	"github.com/encobrain/go-context.v2"
+	"sort"
 	"strconv"
 )
 
@@ -44,7 +45,16 @@ func getDeadlockState(ctx context.Context, state *deadlockState) {
 }
 
 func getDeadlockInfo(st *deadlockState, level string) (info string) {
-	for name, inf := range st.childs {
+	names := make([]string, 0, len(st.childs))
+
+	for name := range st.childs {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	for _, name := range names {
+		inf := st.childs[name]
 		info += level + name + " x" + strconv.Itoa(inf.count) + "\n"
 		info += getDeadlockInfo(inf, level+"   ")
 	}

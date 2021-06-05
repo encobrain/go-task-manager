@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"net/http/pprof"
 	"runtime/debug"
 	"time"
 )
@@ -31,7 +32,28 @@ func (c Start) Execute(args []string) (err error) {
 		return fmt.Errorf("execute start fail. %s", err)
 	}
 
-	startCtx := context.Main.Child("start", c.start).Go()
+	var serveMux = http.NewServeMux()
+
+	if c.Config.Process.Run.Debug.Pprof {
+		serveMux.HandleFunc("/debug/pprof/", pprof.Index)
+		serveMux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		serveMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		serveMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		serveMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		log.Printf("DEBUG: added pprof")
+	}
+
+	var debugShowContexts <-chan time.Time
+
+	if c.Config.Process.Run.Debug.CtxInterval > 0 {
+		debugShowContexts = time.Tick(time.Second * time.Duration(c.Config.Process.Run.Debug.CtxInterval))
+
+		log.Printf("DEBUG: added show contexts every %d sec", c.Config.Process.Run.Debug.CtxInterval)
+	}
+
+	startCtx := context.Main.Child("start", c.start).
+		ValueSet("serveMux", serveMux).Go()
 
 	go func() {
 		sig := <-c.CmdStart.ShutdownSignals()
@@ -48,7 +70,21 @@ func (c Start) Execute(args []string) (err error) {
 		case <-context.Main.ChildsFinished(true):
 			log.Printf("Service stopped\n")
 			return
+		case <-debugShowContexts:
+			currRuns := contextSupp.GetDeadlocksInfo(context.Main)
+
+			changed := ""
+
+			if currRuns != prevRuns {
+				changed = " (changed)"
+			}
+
+			prevRuns = currRuns
+
+			log.Printf("Working contexts%s:\n%s\n", changed, currRuns)
 		case <-startCtx.Done():
+			debugShowContexts = nil
+
 			select {
 			case <-context.Main.ChildsFinished(true):
 				continue
@@ -71,6 +107,8 @@ func (c Start) panicHandler(ctx context.Context, panicErr interface{}) {
 	ctx.Cancel(fmt.Errorf("service panic"))
 }
 
+// ctx should contain vars:
+//   serveMux *http.ServeMux
 func (c Start) start(ctx context.Context) {
 	ctx.PanicHandlerSet(c.panicHandler)
 
@@ -102,11 +140,14 @@ func (c Start) start(ctx context.Context) {
 	stor.Stop()
 }
 
+// ctx should contain vars:
+//   serveMux *http.ServeMux
 func (c Start) startServer(ctx context.Context) {
+	serveMux := ctx.Value("serveMux").(*http.ServeMux)
+
 	tmService := task_manager.New(ctx)
 	tmService.Start()
 
-	serveMux := http.NewServeMux()
 	upgrader := websocket.Upgrader{}
 
 	serveMux.HandleFunc(c.Config.Server.Listen.Path, func(w http.ResponseWriter, r *http.Request) {

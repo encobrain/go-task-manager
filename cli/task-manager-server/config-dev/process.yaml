@@ -1,0 +1,4 @@
+run:
+  debug:
+    pprof: true
+    ctx_interval: 20
