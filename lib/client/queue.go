@@ -21,11 +21,11 @@ type Queue interface {
 	// Chan closed with result.
 	// If nil - task not exists.
 	TaskGet(uuid string) (task <-chan Task)
-	// TasksSubscribe subscribes to get tasks from queue for process.
-	// If paretnUUID not empty - subscribe only on tasks with that parent uuid
+	// TasksSubscribe subscribes to get tasks from queue for process by parentUUID & status.
+	// Empty values means Any.
 	// If nil - client stopped.
 	// Close tasks channel - cancel subscribe
-	TasksSubscribe(parentUUID string) (tasks chan Task)
+	TasksSubscribe(parentUUID string, status string) (tasks chan Task)
 	// TasksGet gets all tasks with/or without parentUUID in queue.
 	// If nil - client stopped.
 	// Chan closed with result.
@@ -182,7 +182,7 @@ func (q *queue) TaskGet(uuid string) (task <-chan Task) {
 	return ch
 }
 
-func (q *queue) TasksSubscribe(parentUUID string) (tasks chan Task) {
+func (q *queue) TasksSubscribe(parentUUID string, status string) (tasks chan Task) {
 	ch := make(chan Task)
 
 	q.ctx.Child("queue.tasks.subscribe", func(ctx context.Context) {
@@ -253,7 +253,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks chan Task) {
 			}
 		}()
 
-		log.Printf("TMClient: Queue[%s]: tasks subscribing parentUUID=%s ...\n", q.name, parentUUID)
+		log.Printf("TMClient: Queue[%s]: tasks subscribing parentUUID=%s status=%s ...\n", q.name, parentUUID, status)
 
 		for {
 			var protCtl controller.Controller
@@ -271,6 +271,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks chan Task) {
 			res, err := protCtl.RequestSend(&mes.CS_QueueTasksSubscribe_rq{
 				QueueId:    q.id,
 				ParentUUID: parentUUID,
+				Status:     status,
 			})
 
 			if err != nil {
@@ -313,7 +314,7 @@ func (q *queue) TasksSubscribe(parentUUID string) (tasks chan Task) {
 				}
 			}
 
-			log.Printf("TMClient: Queue[%s]: tasks resubscribing parentUUID=%s ...\n", q.name, parentUUID)
+			log.Printf("TMClient: Queue[%s]: tasks resubscribing parentUUID=%s status=%s ...\n", q.name, parentUUID, status)
 		}
 	}).Go()
 
