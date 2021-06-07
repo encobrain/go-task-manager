@@ -78,6 +78,7 @@ type CS_QueueTasksSubscribe_rq struct {
 	RqId
 	QueueId    uint64
 	ParentUUID string
+	Status     string
 }
 
 func (CS_QueueTasksSubscribe_rq) Code() byte {
