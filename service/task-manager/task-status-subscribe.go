@@ -76,8 +76,12 @@ func (s *tmService) taskStatusSubscribeProcess(ctx context.Context) {
 			SubscribeId: subId,
 		}
 
+		var wCtx context.Context
+
 		if task != nil {
-			stateId := taskState.getOrNewId(task)
+			var stateId uint64
+
+			stateId, wCtx = taskState.getOrNewId(task)
 
 			statusMes.Info = &mes.TaskInfo{
 				StateId:    stateId,
@@ -88,6 +92,10 @@ func (s *tmService) taskStatusSubscribeProcess(ctx context.Context) {
 		}
 
 		err := protCtl.MessageSend(statusMes)
+
+		if wCtx != nil {
+			wCtx.Go()
+		}
 
 		if err != nil {
 			log.Printf("Task[%s]: Send task status fail. %s\n", taskUUID, err)

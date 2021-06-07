@@ -52,7 +52,8 @@ func (s *tmService) queueTaskNew(ctx context.Context) {
 
 		s.task.router.Route(queue, task)
 
-		stateId := taskState.getOrNewId(task)
+		stateId, wCtx := taskState.getOrNewId(task)
+		defer wCtx.Go()
 
 		res.UUID = task.UUID()
 		res.StateId = stateId
@@ -80,7 +81,8 @@ func (s *tmService) queueTaskGet(ctx context.Context) {
 		task := queue.TaskGet(req.UUID)
 
 		if task != nil {
-			stateId := taskState.getOrNewId(task)
+			stateId, wCtx := taskState.getOrNewId(task)
+			defer wCtx.Go()
 
 			res.Info = &mes.TaskInfo{
 				StateId:    stateId,
@@ -172,7 +174,9 @@ func (s *tmService) queueTasksGet(ctx context.Context) {
 		}
 
 		for _, t := range tasks {
-			stateId := taskState.getOrNewId(t)
+			stateId, wCtx := taskState.getOrNewId(t)
+			//goland:noinspection GoDeferInLoop
+			defer wCtx.Go()
 
 			res.Tasks = append(res.Tasks, mes.TaskInfo{
 				StateId:    stateId,

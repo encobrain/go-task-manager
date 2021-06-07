@@ -6,7 +6,6 @@ import (
 	"github.com/encobrain/go-task-manager/internal/protocol/controller"
 	"github.com/encobrain/go-task-manager/internal/protocol/mes"
 	"github.com/encobrain/go-task-manager/lib/storage"
-	"log"
 	"sync"
 )
 
@@ -32,7 +31,8 @@ type taskState struct {
 	tasks    map[uint64]storage.Task
 }
 
-func (ts *taskState) getOrNewId(task storage.Task) (id uint64) {
+// !!! Should do stateWatchCtx.Go() after send message
+func (ts *taskState) getOrNewId(task storage.Task) (id uint64, stateWatchCtx context.Context) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -40,7 +40,7 @@ func (ts *taskState) getOrNewId(task storage.Task) (id uint64) {
 	id, ok := ts.ids[chId]
 
 	if ok {
-		return id
+		return id, ts.watchers[chId]
 	}
 
 	id = ts.nextId
@@ -49,10 +49,10 @@ func (ts *taskState) getOrNewId(task storage.Task) (id uint64) {
 	ts.ids[chId] = id
 	ts.tasks[id] = task
 
-	wCtx := ts.ctx.Child("task.state.watcher", ts.watcher).
-		ValueSet("task", task).Go()
+	stateWatchCtx = ts.ctx.Child("task.state.watcher", ts.watcher).
+		ValueSet("task", task)
 
-	ts.watchers[chId] = wCtx
+	ts.watchers[chId] = stateWatchCtx
 
 	return
 }
@@ -83,14 +83,10 @@ func (ts *taskState) watcher(ctx context.Context) {
 	case <-protCtl.Finished():
 		return
 	case <-task.Canceled():
-		err := protCtl.MessageSend(&mes.SC_TaskCancel_ms{
+		protCtl.MessageSend(&mes.SC_TaskCancel_ms{
 			StateId: id,
 			Reason:  "state changed",
 		})
-
-		if err != nil {
-			log.Printf("Send task cancel fail. %s\n", err)
-		}
 	}
 }
 

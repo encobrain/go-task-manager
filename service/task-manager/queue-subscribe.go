@@ -153,7 +153,7 @@ func (s *tmService) queueSubscribeSend(ctx context.Context) {
 		return
 	}
 
-	stateId := taskState.getOrNewId(task)
+	stateId, wCtx := taskState.getOrNewId(task)
 
 	qss.addSent(task, ctx)
 
@@ -168,6 +168,8 @@ func (s *tmService) queueSubscribeSend(ctx context.Context) {
 			Status:     task.Status(),
 		},
 	})
+
+	wCtx.Go()
 
 	if err != nil {
 		log.Printf("Send subscribe task fail. %s\n", err)

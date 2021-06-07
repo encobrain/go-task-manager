@@ -84,7 +84,15 @@ func (s *tmService) taskStatusSet(ctx context.Context) {
 
 	res := &mes.SC_TaskStatusSet_rs{}
 
-	defer protCtl.ResponseSend(req, res)
+	var wCtx context.Context
+
+	defer func() {
+		protCtl.ResponseSend(req, res)
+
+		if wCtx != nil {
+			wCtx.Go()
+		}
+	}()
 
 	task := taskState.getTask(req.StateId)
 
@@ -112,7 +120,8 @@ func (s *tmService) taskStatusSet(ctx context.Context) {
 
 	s.task.router.Route(queue, task)
 
-	stateId := taskState.getOrNewId(task)
+	stateId, wCtx := taskState.getOrNewId(task)
+
 	res.StateId = &stateId
 }
 
