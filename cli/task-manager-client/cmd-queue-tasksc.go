@@ -13,13 +13,12 @@ type CmdQueueTasksCount struct {
 func (c CmdQueueTasksCount) Execute(args []string) (err error) {
 	conf.Init()
 
-	if len(args) < 3 {
-		return fmt.Errorf("use: queue_tasksc <queue> <parentUUID> <status>")
+	if len(args) < 2 {
+		return fmt.Errorf("use: queue_tasksc <queue> <parentUUID>")
 	}
 
 	queueName := args[0]
 	parentUUID := args[1]
-	status := args[2]
 
 	cl := client.NewClient(context.Main, &conf.Client)
 	cl.Start()
@@ -32,7 +31,7 @@ func (c CmdQueueTasksCount) Execute(args []string) (err error) {
 		return fmt.Errorf("get queue fail. client stopped")
 	}
 
-	log.Printf("Getting tasks parentUUID=`%s` status=`%s`...", parentUUID, status)
+	log.Printf("Getting tasks parentUUID=`%s`...", parentUUID)
 
 	tasks := <-queue.TasksGet(parentUUID)
 
@@ -40,17 +39,17 @@ func (c CmdQueueTasksCount) Execute(args []string) (err error) {
 		return fmt.Errorf("get tasks fail. client stopped")
 	}
 
-	if status != "" {
-		var f []client.Task
-
-		for _, t := range tasks {
-			if t.Status() == status {
-				f = append(f, t)
-			}
-		}
-	}
+	counts := map[string]int{}
 
 	log.Printf("Got %d tasks", len(tasks))
+
+	for _, t := range tasks {
+		counts[t.Status()]++
+	}
+
+	for status, count := range counts {
+		log.Printf("%s: %d", status, count)
+	}
 
 	return nil
 }
