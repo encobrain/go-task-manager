@@ -26,12 +26,13 @@ type subs struct {
 	routed  map[storage.Task]bool
 }
 
-func (s *subs) getChannel(parrentUUID string) (ch chan storage.Task) {
-	ch = s.chans[parrentUUID]
+func (s *subs) getChannel(parrentUUID string, status string) (ch chan storage.Task) {
+	id := parrentUUID + "|" + status
+	ch = s.chans[id]
 
 	if ch == nil {
 		ch = make(chan storage.Task)
-		s.chans[parrentUUID] = ch
+		s.chans[id] = ch
 	}
 
 	return
@@ -65,7 +66,7 @@ type Router struct {
 	subs map[storage.Queue]*subs
 }
 
-func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan storage.Task) {
+func (r *Router) Subscribe(queue storage.Queue, parentUUID string, status string) (tasks <-chan storage.Task) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -109,7 +110,7 @@ func (r *Router) Subscribe(queue storage.Queue, parentUUID string) (tasks <-chan
 		subCtx.Go()
 	}
 
-	return s.getChannel(parentUUID)
+	return s.getChannel(parentUUID, status)
 }
 
 func (r *Router) Route(queue storage.Queue, task storage.Task) {
@@ -130,8 +131,10 @@ func (r *Router) Route(queue storage.Queue, task storage.Task) {
 		return
 	}
 
-	allCh := s.getChannel("")
-	parCh := s.getChannel(task.ParentUUID())
+	anyAnyCh := s.getChannel("", "")
+	anyStCh := s.getChannel("", task.Status())
+	parAnyCh := s.getChannel(task.ParentUUID(), "")
+	parStCh := s.getChannel(task.ParentUUID(), task.Status())
 
 	r.ctx.Child("route", func(ctx context.Context) {
 		s.mu.Lock()
@@ -143,8 +146,10 @@ func (r *Router) Route(queue storage.Queue, task storage.Task) {
 		select {
 		case <-ctx.Done():
 		case <-canceled:
-		case allCh <- task:
-		case parCh <- task:
+		case anyAnyCh <- task:
+		case anyStCh <- task:
+		case parAnyCh <- task:
+		case parStCh <- task:
 		}
 	}).Go()
 }

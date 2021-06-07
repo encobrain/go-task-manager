@@ -114,7 +114,7 @@ func (s *tmService) queueTaskSubscribe(ctx context.Context) {
 		id := qss.new()
 		res.SubscribeId = &id
 
-		receive := s.task.router.Subscribe(queue, req.ParentUUID)
+		receive := s.task.router.Subscribe(queue, req.ParentUUID, req.Status)
 
 		ctx.Child("queue.subscribe.process", s.queueSubscribeProcess).
 			ValueSet("receive", receive).
